@@ -48,8 +48,6 @@ class Fluid {
         double BoxSizeY;
         double cellVol;
 
-        vector<vector<double>> vx_new;
-        vector<vector<double>> vy_new;
         vector<vector<double>> isNotBoundary;
 
         vector<vector<double>>  rho_XL, rho_XR, rho_YB, rho_YT;
@@ -84,11 +82,9 @@ class Fluid {
                         vector<double>(this->Ny, 0.0));
             this->pressure = vector<vector<double>>(this->Nx, 
                         vector<double>(this->Ny, 0.0));
+            this->density = vector<vector<double>>(this->Nx, 
+                        vector<double>(this->Ny, 0.0));
 
-            this->vx_new = vector<vector<double>>(this->Nx, 
-                            vector<double>(this->Ny, 0.0));
-            this->vy_new = vector<vector<double>>(this->Nx, 
-                            vector<double>(this->Ny, 0.0));
             this->isNotBoundary = vector<vector<double>>(this->Nx, 
                             vector<double>(this->Ny, 1.0));
 
@@ -146,8 +142,8 @@ class Fluid {
         public:
         void initializeKHI(){
             // Initialize a Kelvin-Helmholtz Instability setup
-            for(int i = 0; i <Nx; i++){
-                for(int j = 0; j <Ny; j++){
+            for(int i = 0; i < Nx; i++){
+                for(int j = 0; j < Ny; j++){
                     double y = (j + 0.5) * dy;
                     double x = (i + 0.5) * dx;
                     if(y < BoxSizeY * 0.75 && y > BoxSizeY * 0.25){
@@ -163,7 +159,7 @@ class Fluid {
                     pressure[i][j] = 2.5; // uniform pressure
                 }
             }
-        }
+        };
         
         private:
         void printState(int step){
@@ -174,7 +170,7 @@ class Fluid {
                 }
                 cout << endl;
             }
-        }
+        };
 
         public:
         void runSimulation(double tFinal){
@@ -193,9 +189,10 @@ class Fluid {
                 }
 
                 runTimeStep();
+                cout << "Finished timestep at time: " << t << endl;
 
             }
-        }
+        };
         public:
         void runTimeStep(){
             double dt = calculateTimeStep();
@@ -203,7 +200,7 @@ class Fluid {
             RiemannSolver();
             updateStates(dt);
             t += dt;
-        }
+        };
         private:
         void updateStates(double dt){
             // update cell-centered states using computed fluxes
@@ -424,17 +421,20 @@ class Fluid {
 
 int main(){
     // Simulation parameters
-    int Nx = 200;
-    int Ny = 200;
+    int Nx = 100;
+    int Ny = 100;
     double boxSizeX = 1.0;
     double boxSizeY = 1.0;
     double tFinal = 0.1; //2.0;
 
+    cout << "Starting Kelvin-Helmholtz Instability Simulation" << endl;
     Fluid fluid(Nx, Ny, boxSizeX, boxSizeY);
-    fluid.useSlopeLimiter = 1; // enable slope limiter
-    fluid.initializeKHI();
-    fluid.runTimeStep();
+    cout << "Initialized fluid domain of size " << Nx << " x " << Ny << endl;
 
-    //fluid.runSimulation(tFinal);
+    fluid.useSlopeLimiter = 1; // enable slope limiter
+    //fluid.initializeKHI();
+    //fluid.runTimeStep();
+
+    fluid.runSimulation(tFinal);
     return 0;
 }
