@@ -186,7 +186,6 @@ class Fluid {
             this->tFinal = tFinal;
             this->tOut = tOut;
 
-            double dt;
             int numOutputs = 0;
             while (t < tFinal){
 
@@ -196,7 +195,6 @@ class Fluid {
                 }
 
                 runTimeStep();
-                //cout << "Finished timestep at time: " << t << endl;
             }
         };
         public:
@@ -205,6 +203,7 @@ class Fluid {
             extrapolateToFaces(dt);
             RiemannSolver();
             updateStates(dt);
+            cout << "Finished timestep, current dt =  " << dt << endl;
             t += dt;
         };
         private:
@@ -326,7 +325,7 @@ class Fluid {
         };
         private:
         void extrapolateToFaces(float dt){
-            // extrapolate cell-centered values to faces using MUSCL scheme}
+            // extrapolate cell-centered values to faces
             for (int i = 0; i < Nx; i++) {
                 for (int j = 0; j < Ny; j++) {
                     
@@ -338,16 +337,16 @@ class Fluid {
                     int Bi = (j - 1 + Ny) % Ny; // bottom
 
                     // compute gradients using central differences
-                    double gradX_Density = (density[Ri][j] - density[Li][j]) / 2.0*dx;
-                    double gradY_Density = (density[i][Ti] - density[i][Bi]) / 2.0*dy;
+                    double gradX_Density = (density[Ri][j] - density[Li][j]) / (2.0*dx);
+                    double gradY_Density = (density[i][Ti] - density[i][Bi]) / (2.0*dy);
 
-                    double gradX_Pressure = (pressure[Ri][j] - pressure[Li][j]) / 2.0*dx;
-                    double gradY_Pressure = (pressure[i][Ti] - pressure[i][Bi]) / 2.0*dy;
+                    double gradX_Pressure = (pressure[Ri][j] - pressure[Li][j]) / (2.0*dx);
+                    double gradY_Pressure = (pressure[i][Ti] - pressure[i][Bi]) / (2.0*dy);
 
-                    double gradX_Vx = (vx[Ri][j] - vx[Li][j]) / 2.0*dx;
-                    double gradY_Vx = (vx[i][Ti] - vx[i][Bi]) / 2.0*dy;
-                    double gradX_Vy = (vy[Ri][j] - vy[Li][j]) / 2.0*dx;
-                    double gradY_Vy = (vy[i][Ti] - vy[i][Bi]) / 2.0*dy;
+                    double gradX_Vx = (vx[Ri][j] - vx[Li][j]) / (2.0*dx);
+                    double gradY_Vx = (vx[i][Ti] - vx[i][Bi]) / (2.0*dy);
+                    double gradX_Vy = (vy[Ri][j] - vy[Li][j]) / (2.0*dx);
+                    double gradY_Vy = (vy[i][Ti] - vy[i][Bi]) / (2.0*dy);
 
                     // apply slope limiter if enabled
                     if(useSlopeLimiter){
@@ -365,9 +364,9 @@ class Fluid {
                     double rho_prime = density[i][j] - 0.5 * dt * (gradX_Density * vx[i][j] + gradY_Density * vy[i][j] +
                                                                 density[i][j] * (gradX_Vx + gradY_Vy));
                     double vx_prime = vx[i][j] - 0.5 * dt * (gradX_Vx * vx[i][j] + gradY_Vx * vy[i][j] +
-                                                        (1.0 / pressure[i][j]) * gradX_Pressure);
+                                                        (1.0 / density[i][j]) * gradX_Pressure);
                     double vy_prime = vy[i][j] - 0.5 * dt * (gradX_Vy * vx[i][j] + gradY_Vy * vy[i][j] +
-                                                        (1.0 / pressure[i][j]) * gradY_Pressure);
+                                                        (1.0 / density[i][j]) * gradY_Pressure);
 
                     double pressure_prime = pressure[i][j] - 0.5 * dt * (gradX_Pressure * vx[i][j] + gradY_Pressure * vy[i][j] +
                                                                 gamma * pressure[i][j] * (gradX_Vx + gradY_Vy));
@@ -382,7 +381,7 @@ class Fluid {
                     this->rho_YT[i][j] = rho_prime + gradY_Density * dy / 2.0;
 
                     this->vx_XL[Li][j] = vx_prime - gradX_Vx * dx / 2.0;
-                    this->vx_XR[i][Bi] = vx_prime + gradX_Vx * dx / 2.0;
+                    this->vx_XR[i][i] = vx_prime + gradX_Vx * dx / 2.0;
                     this->vx_YB[i][Bi] = vx_prime - gradY_Vx * dy / 2.0;
                     this->vx_YT[i][j] = vx_prime + gradY_Vx * dy / 2.0; 
 
@@ -413,18 +412,37 @@ class Fluid {
             }
 
             double cs = sqrt(gamma * maxP / minRho);
+            cout << "Sound speed: " << cs << ", Max Velocity: " << maxV << ", Max pressure: " << maxP << ", min density: " << minRho << endl;
             double dt = courant_fac * min(dx, dy) / (cs + maxV);
+
+            if (minRho == 1e10){
+                for (int i = 0; i < 10; i++){
+                    cout << density[i][i] << endl;
+                }
+            }
 
             return dt;
         };
         private:
         void slopeLimiter(double &gradx, double &grady, vector<vector<double>> field,
                             int i, int j, int Ri, int Li, int Ti, int Bi){
+
+            double floor_x, floor_y;
+            if (gradx == 0.0){
+                floor_x = 1e-8;
+            } else {
+                floor_x = 0.0;
+            }
+            if (grady == 0.0){
+                floor_y = 1e-8;
+            } else {
+                floor_y = 0.0;
+            }
             // Minmod slope limiter
-            gradx = max(0.0, min(1.0, ((field[i][j] - field[Li][j]) / dx) / gradx)) * gradx;
-            gradx = max(0.0, min(1.0, ((field[Ri][j] - field[i][j]) / dx) / gradx)) * gradx;
-            grady = max(0.0, min(1.0, ((field[i][j] - field[i][Bi]) / dy) / grady)) * grady;
-            grady = max(0.0, min(1.0, ((field[i][Ti] - field[i][j]) / dy) / grady)) * grady;
+            gradx = max(0.0, min(1.0, ((field[i][j] - field[Li][j]) / dx) / (gradx + floor_x))) * gradx;
+            gradx = max(0.0, min(1.0, ((field[Ri][j] - field[i][j]) / dx) / (gradx + floor_x))) * gradx;
+            grady = max(0.0, min(1.0, ((field[i][j] - field[i][Bi]) / dy) / (grady + floor_y))) * grady;
+            grady = max(0.0, min(1.0, ((field[i][Ti] - field[i][j]) / dy) / (grady + floor_y))) * grady;
         };
 };
 
