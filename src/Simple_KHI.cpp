@@ -14,7 +14,7 @@ class Fluid {
         vector<vector<double>> density;
         float t;
         float tFinal;
-        float tOut = 0.1;
+        float tOut;
         int useSlopeLimiter = 0;
         // fluid params
         float courant_fac = 0.4;
@@ -163,21 +163,28 @@ class Fluid {
         
         private:
         void printState(int step){
-            cout << "Step: " << step << ", Time: " << t << endl;
+            double totalEnergy = 0.0;
+            double totalMass = 0.0;
+            double totalMomentumX = 0.0;
             for(int j = Ny - 1; j >= 0; j--){
                 for(int i = 0; i < Nx; i++){
-                    cout << "(" << vx[i][j] << ", " << vy[i][j] << ") ";
+                    totalEnergy += (pressure[i][j]/(gamma - 1) + 0.5 * density[i][j] * 
+                                    (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j])) * cellVol;
+                    totalMass += density[i][j] * cellVol;
+                    totalMomentumX += density[i][j] * vx[i][j] * cellVol;
                 }
-                cout << endl;
             }
+            cout << "t = " << t << ", E = " << totalEnergy << ", Mass = " << totalMass 
+                     << ", Px = " << totalMomentumX << endl;
         };
 
         public:
-        void runSimulation(double tFinal){
+        void runSimulation(double tFinal, double tOut){
 
             initializeKHI();
             t = 0.0;
             this->tFinal = tFinal;
+            this->tOut = tOut;
 
             double dt;
             int numOutputs = 0;
@@ -189,8 +196,7 @@ class Fluid {
                 }
 
                 runTimeStep();
-                cout << "Finished timestep at time: " << t << endl;
-
+                //cout << "Finished timestep at time: " << t << endl;
             }
         };
         public:
@@ -215,22 +221,25 @@ class Fluid {
                     int Bi = (j - 1 + Ny) % Ny; // bottom
 
                     // update density
-                    density[i][j] -= (dt / dx) * (flux_rho_X[Ri][j] - flux_rho_X[i][j])
-                                    + (dt / dy) * (flux_rho_Y[i][Ti] - flux_rho_Y[i][j]);
+                    density[i][j] -= (dt / dx) * (flux_rho_X[i][j] - flux_rho_X[Li][j])
+                                    + (dt / dy) * (flux_rho_Y[i][j] - flux_rho_Y[i][Bi]);
 
                     // update momentum in x
-                    vx[i][j] -= (dt / dx) * (flux_momx_X[Ri][j] - flux_momx_X[i][j]) / density[i][j]
-                                + (dt / dy) * (flux_momx_Y[i][Ti] - flux_momx_Y[i][j]) / density[i][j];
+                    vx[i][j] -= (dt / dx) * (flux_momx_X[i][j] - flux_momx_X[Li][j]) 
+                                + (dt / dy) * (flux_momx_Y[i][j] - flux_momx_Y[i][Bi]);
 
                     // update momentum in y
-                    vy[i][j] -= (dt / dx) * (flux_momy_X[Ri][j] - flux_momy_X[i][j]) / density[i][j]
-                                + (dt / dy) * (flux_momy_Y[i][Ti] - flux_momy_Y[i][j]) / density[i][j];
+                    vy[i][j] -= (dt / dx) * (flux_momy_X[i][j] - flux_momy_X[Li][j])
+                                + (dt / dy) * (flux_momy_Y[i][j] - flux_momy_Y[i][Bi]);
 
                     // update energy and pressure
+                    // we may need to use old velocities here
                     double E = pressure[i][j]/(gamma - 1) + 0.5 * density[i][j] * 
                                 (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j]);
-                    E -= (dt / dx) * (flux_E_X[Ri][j] - flux_E_X[i][j])
-                         + (dt / dy) * (flux_E_Y[i][Ti] - flux_E_Y[i][j]);
+
+                    E -= (dt / dx) * (flux_E_X[i][j] - flux_E_X[Li][j])
+                         + (dt / dy) * (flux_E_Y[i][j] - flux_E_Y[i][Bi]);
+
                     pressure[i][j] = (gamma - 1) * (E - 0.5 * density[i][j] * 
                                         (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j]));
                 }
@@ -425,7 +434,8 @@ int main(){
     int Ny = 100;
     double boxSizeX = 1.0;
     double boxSizeY = 1.0;
-    double tFinal = 0.1; //2.0;
+    double tFinal = 1.0; //2.0;
+    double tOut = 0.01;
 
     cout << "Starting Kelvin-Helmholtz Instability Simulation" << endl;
     Fluid fluid(Nx, Ny, boxSizeX, boxSizeY);
@@ -435,6 +445,6 @@ int main(){
     //fluid.initializeKHI();
     //fluid.runTimeStep();
 
-    fluid.runSimulation(tFinal);
+    fluid.runSimulation(tFinal,tOut);
     return 0;
 }
