@@ -24,23 +24,7 @@ class Fluid {
         int Nx;
         int Ny;
         
-        // Constructor
-        // Fluid(int Nx, int Ny, double boxSizeX, double boxSizeY);
-        
-        // // Public methods 
-        // void initializeKHI();
-        // void printState(int step);
-        // void runSimulation();
-        // void runTimeStep();
-        // double calculateTimeStep();
-
     private:
-        
-        // void updateStates(double dt);
-        // void RiemannSolver();
-        // void extrapolateToFaces(float dt);
-        // void slopeLimiter(double &gradx, double &grady, vector<vector<double>> field,
-        //                     int i, int j, int Ri, int Li, int Ti, int Bi);
         
         double dx;
         double dy;
@@ -203,7 +187,7 @@ class Fluid {
             extrapolateToFaces(dt);
             RiemannSolver();
             updateStates(dt);
-            cout << "Finished timestep, current dt =  " << dt << endl;
+            //cout << "Finished timestep, current dt =  " << dt << endl;
             t += dt;
         };
         private:
@@ -225,6 +209,11 @@ class Fluid {
                     density[i][j] -= (dt / dx) * (flux_rho_X[i][j] - flux_rho_X[Li][j])
                                     + (dt / dy) * (flux_rho_Y[i][j] - flux_rho_Y[i][Bi]);
 
+                    if (density[i][j] <= 0.0) {
+                        cout << "Negative density encountered at (" << i << "," << j << "): " << density[i][j] << endl;
+                        throw runtime_error("Simulation aborted due to negative or zero density.");
+                    };
+
                     // update momentum in x
                     vx[i][j] -= (dt / dx) * (flux_momx_X[i][j]/density[i][j] - flux_momx_X[Li][j]/density[Li][j]) 
                                 + (dt / dy) * (flux_momx_Y[i][j]/density[i][j] - flux_momx_Y[i][Bi]/density[i][Bi]);
@@ -243,6 +232,10 @@ class Fluid {
 
                     pressure[i][j] = (gamma - 1) * (E - 0.5 * density[i][j] * 
                                         (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j]));
+                    if (pressure[i][j] <= 0.0) {
+                        cout << "Negative pressure encountered at (" << i << "," << j << "): " << pressure[i][j] << endl;
+                        throw runtime_error("Simulation aborted due to negative or zero pressure.");
+                    };
                 }
             }
         };  
@@ -286,10 +279,10 @@ class Fluid {
                     double P_Y_star = (gamma - 1) * (E_Y_star - 0.5 * (momx_Y_star*momx_Y_star + momy_Y_star*momy_Y_star) / rho_Y_star);
 
                     // compute fluxes 
-                    double C = sqrt(gamma * P_X_star / rho_X_star) + abs(vx_XL[Ri][j]);
-                    C = max(C, sqrt(gamma * P_Y_star / rho_Y_star) + abs(vy_YB[i][Ti]));
-                    C = max(C, sqrt(gamma * P_X_star / rho_X_star) + abs(vx_XR[i][j]));
-                    C = max(C, sqrt(gamma * P_Y_star / rho_Y_star) + abs(vy_YT[i][j]));
+                    double C = sqrt(gamma * P_XL[Ri][j] / rho_XL[Ri][j]) + abs(vx_XL[Ri][j]);
+                    C = max(C, sqrt(gamma * P_XR[i][j] / rho_XR[i][j]) + abs(vx_XR[i][j]));
+                    C = max(C, sqrt(gamma * P_YB[i][Ti] / rho_YB[i][Ti]) + abs(vy_YB[i][Ti]));
+                    C = max(C, sqrt(gamma * P_YT[i][j] / rho_YT[i][j]) + abs(vy_YT[i][j]));
 
                     double flux_rho_X = momx_X_star - C * 0.5 * (rho_XL[Ri][j] - rho_XR[i][j]);
                     double flux_rho_Y = momx_Y_star - C * 0.5 * (rho_YB[i][Ti] - rho_YT[i][j]);
@@ -424,7 +417,7 @@ class Fluid {
             }
 
             double cs = sqrt(gamma * maxP / minRho);
-            cout << "Sound speed: " << cs << ", Max Velocity: " << maxV << ", Max pressure: " << maxP << ", min density: " << minRho << endl;
+            //cout << "Sound speed: " << cs << ", Max Velocity: " << maxV << ", Max pressure: " << maxP << ", min density: " << minRho << endl;
             double dt = courant_fac * min(dx, dy) / (cs + maxV);
 
             if (minRho == 1e10){
@@ -474,7 +467,12 @@ int main(){
     fluid.useSlopeLimiter = 1; // enable slope limiter
     //fluid.initializeKHI();
     //fluid.runTimeStep();
-
-    fluid.runSimulation(tFinal,tOut);
+    try {
+        fluid.runSimulation(tFinal,tOut);
+    } catch (const runtime_error& e) {
+        cerr << e.what() << endl;
+        cerr << "Simulation terminated prematurely at time t = " << fluid.t << endl;
+        return -1;
+    }
     return 0;
 }
