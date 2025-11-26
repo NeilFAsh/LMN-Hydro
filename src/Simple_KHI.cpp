@@ -203,35 +203,41 @@ class Fluid {
                     int Ti = (j + 1) % Ny; // top
                     int Bi = (j - 1 + Ny) % Ny; // bottom
 
+                    // Get conserved quantities
+                    double mass = density[i][j] * cellVol;
+                    double momx = mass * vx[i][j];
+                    double momy = mass * vy[i][j];
+                    double E = cellVol * pressure[i][j]/(gamma - 1) + 0.5 * mass * 
+                                    (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j]);
+
                     // update density
                     // subtract fluxes leaving the cell (right and top)
                     // and add fluxes entering the cell (left and bottom)
-                    density[i][j] -= (dt / dx) * (flux_rho_X[i][j] - flux_rho_X[Li][j])
-                                    + (dt / dy) * (flux_rho_Y[i][j] - flux_rho_Y[i][Bi]);
+                    mass -= dt * dy * (flux_rho_X[i][j] - flux_rho_X[Li][j])
+                                     + dt * dx * (flux_rho_Y[i][j] - flux_rho_Y[i][Bi]);
 
+                    // update momentum in x
+                    momx -= dt * dy * (flux_momx_X[i][j] - flux_momx_X[Li][j])
+                                     + dt * dx * (flux_momx_Y[i][j] - flux_momx_Y[i][Bi]);
+
+                    // update momentum in y
+                    momy -= dt * dy * (flux_momy_X[i][j] - flux_momy_X[Li][j])
+                                     + dt * dx * (flux_momy_Y[i][j] - flux_momy_Y[i][Bi]);
+
+                    // update energy
+                    E -= dt * dy * (flux_E_X[i][j] - flux_E_X[Li][j])
+                             + dt * dx * (flux_E_Y[i][j] - flux_E_Y[i][Bi]);
+
+                    // update primitive variables
+                    density[i][j] = mass / cellVol;
+                    vx[i][j] = momx / mass;
+                    vy[i][j] = momy / mass;
+                    pressure[i][j] = (E - 0.5 * mass * (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j])) * (gamma - 1) / cellVol;
+                    
                     if (density[i][j] <= 0.0) {
                         cout << "Negative density encountered at (" << i << "," << j << "): " << density[i][j] << endl;
                         throw runtime_error("Simulation aborted due to negative or zero density.");
                     };
-
-                    // update momentum in x
-                    vx[i][j] -= (dt / dx) * (flux_momx_X[i][j]/density[i][j] - flux_momx_X[Li][j]/density[Li][j]) 
-                                + (dt / dy) * (flux_momx_Y[i][j]/density[i][j] - flux_momx_Y[i][Bi]/density[i][Bi]);
-
-                    // update momentum in y
-                    vy[i][j] -= (dt / dx) * (flux_momy_X[i][j]/density[i][j] - flux_momy_X[Li][j]/density[Li][j])
-                                + (dt / dy) * (flux_momy_Y[i][j]/density[i][j] - flux_momy_Y[i][Bi]/density[i][Bi]);
-
-                    // update energy and pressure
-                    // we may need to use old velocities here
-                    double E = pressure[i][j]/(gamma - 1) + 0.5 * density[i][j] * 
-                                (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j]);
-
-                    E -= (dt / dx) * (flux_E_X[i][j] - flux_E_X[Li][j])
-                         + (dt / dy) * (flux_E_Y[i][j] - flux_E_Y[i][Bi]);
-
-                    pressure[i][j] = (gamma - 1) * (E - 0.5 * density[i][j] * 
-                                        (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j]));
                     if (pressure[i][j] <= 0.0) {
                         cout << "Negative pressure encountered at (" << i << "," << j << "): " << pressure[i][j] << endl;
                         throw runtime_error("Simulation aborted due to negative or zero pressure.");
@@ -300,7 +306,7 @@ class Fluid {
                     flux_momy_X = flux_momy_X - C * 0.5 * (rho_XL[Ri][j] * vy_XL[Ri][j] - rho_XR[i][j] * vy_XR[i][j]);
                     
                     double flux_momy_Y;
-                    flux_momy_Y = momy_Y_star * momx_Y_star / rho_Y_star + P_X_star;
+                    flux_momy_Y = momy_Y_star * momx_Y_star / rho_Y_star + P_Y_star;
                     flux_momy_Y = flux_momy_Y - C * 0.5 * (rho_YB[i][Ti] * vy_YB[i][Ti] - rho_YT[i][j] * vy_YT[i][j]);
 
                     double flux_E_X;
