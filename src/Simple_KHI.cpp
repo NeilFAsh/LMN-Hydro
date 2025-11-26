@@ -220,16 +220,18 @@ class Fluid {
                     int Bi = (j - 1 + Ny) % Ny; // bottom
 
                     // update density
+                    // subtract fluxes leaving the cell (right and top)
+                    // and add fluxes entering the cell (left and bottom)
                     density[i][j] -= (dt / dx) * (flux_rho_X[i][j] - flux_rho_X[Li][j])
                                     + (dt / dy) * (flux_rho_Y[i][j] - flux_rho_Y[i][Bi]);
 
                     // update momentum in x
-                    vx[i][j] -= (dt / dx) * (flux_momx_X[i][j] - flux_momx_X[Li][j]) 
-                                + (dt / dy) * (flux_momx_Y[i][j] - flux_momx_Y[i][Bi]);
+                    vx[i][j] -= (dt / dx) * (flux_momx_X[i][j]/density[i][j] - flux_momx_X[Li][j]/density[Li][j]) 
+                                + (dt / dy) * (flux_momx_Y[i][j]/density[i][j] - flux_momx_Y[i][Bi]/density[i][Bi]);
 
                     // update momentum in y
-                    vy[i][j] -= (dt / dx) * (flux_momy_X[i][j] - flux_momy_X[Li][j])
-                                + (dt / dy) * (flux_momy_Y[i][j] - flux_momy_Y[i][Bi]);
+                    vy[i][j] -= (dt / dx) * (flux_momy_X[i][j]/density[i][j] - flux_momy_X[Li][j]/density[Li][j])
+                                + (dt / dy) * (flux_momy_Y[i][j]/density[i][j] - flux_momy_Y[i][Bi]/density[i][Bi]);
 
                     // update energy and pressure
                     // we may need to use old velocities here
@@ -251,21 +253,32 @@ class Fluid {
             for (int i = 0; i < Nx; i++) {
                 for (int j = 0; j < Ny; j++) {
 
+                    // Periodic boundary conditions
+                    int Ri = (i + 1) % Nx; // right
+                    int Li = (i - 1 + Nx) % Nx; //left 
+
+                    int Ti = (j + 1) % Ny; // top
+                    int Bi = (j - 1 + Ny) % Ny; // bottom
+
+
                     // Simple Riemann solver: average states 
-                    double rho_X_star = 0.5 * (rho_XL[i][j] + rho_XR[i][j]);
-                    double rho_Y_star = 0.5 * (rho_YB[i][j] + rho_YT[i][j]);
+                    // Average the contributions from neighboring cells
+                    // Take the left edge from the cell to the right,
+                    // and the bottom edge from the cell above
+                    double rho_X_star = 0.5 * (rho_XL[Ri][j] + rho_XR[i][j]);
+                    double rho_Y_star = 0.5 * (rho_YB[i][Ti] + rho_YT[i][j]);
 
-                    double momx_X_star = 0.5 * (rho_XL[i][j] * vx_XL[i][j] + rho_XR[i][j] * vx_XR[i][j]);
-                    double momx_Y_star = 0.5 * (rho_YB[i][j] * vx_YB[i][j] + rho_YT[i][j] * vx_YT[i][j]);
-                    double momy_X_star = 0.5 * (rho_XL[i][j] * vy_XL[i][j] + rho_XR[i][j] * vy_XR[i][j]);
-                    double momy_Y_star = 0.5 * (rho_YB[i][j] * vy_YB[i][j] + rho_YT[i][j] * vy_YT[i][j]);
+                    double momx_X_star = 0.5 * (rho_XL[Ri][j] * vx_XL[Ri][j] + rho_XR[i][j] * vx_XR[i][j]);
+                    double momx_Y_star = 0.5 * (rho_YB[i][Ti] * vx_YB[i][Ti] + rho_YT[i][j] * vx_YT[i][j]);
+                    double momy_X_star = 0.5 * (rho_XL[Ri][j] * vy_XL[Ri][j] + rho_XR[i][j] * vy_XR[i][j]);
+                    double momy_Y_star = 0.5 * (rho_YB[i][Ti] * vy_YB[i][Ti] + rho_YT[i][j] * vy_YT[i][j]);
 
-                    double E_X_star = 0.5 * (P_XL[i][j]/(gamma - 1) + 0.5 * rho_XL[i][j] * 
-                                        (vx_XL[i][j]*vx_XL[i][j] + vy_XL[i][j]*vy_XL[i][j]) +
+                    double E_X_star = 0.5 * (P_XL[Ri][j]/(gamma - 1) + 0.5 * rho_XL[Ri][j] * 
+                                        (vx_XL[Ri][j]*vx_XL[Ri][j] + vy_XL[Ri][j]*vy_XL[Ri][j]) +
                                         P_XR[i][j]/(gamma - 1) + 0.5 * rho_XR[i][j] * 
                                         (vx_XR[i][j]*vx_XR[i][j] + vy_XR[i][j]*vy_XR[i][j]));
-                    double E_Y_star = 0.5 * (P_YB[i][j]/(gamma - 1) + 0.5 * rho_YB[i][j] * 
-                                        (vx_YB[i][j]*vx_YB[i][j] + vy_YB[i][j]*vy_YB[i][j]) +
+                    double E_Y_star = 0.5 * (P_YB[i][Ti]/(gamma - 1) + 0.5 * rho_YB[i][Ti] * 
+                                        (vx_YB[i][Ti]*vx_YB[i][Ti] + vy_YB[i][Ti]*vy_YB[i][Ti]) +
                                         P_YT[i][j]/(gamma - 1) + 0.5 * rho_YT[i][j] * 
                                         (vx_YT[i][j]*vx_YT[i][j] + vy_YT[i][j]*vy_YT[i][j]));
 
@@ -273,45 +286,45 @@ class Fluid {
                     double P_Y_star = (gamma - 1) * (E_Y_star - 0.5 * (momx_Y_star*momx_Y_star + momy_Y_star*momy_Y_star) / rho_Y_star);
 
                     // compute fluxes 
-                    double C = sqrt(gamma * P_X_star / rho_X_star) + abs(vx_XL[i][j]);
-                    C = max(C, sqrt(gamma * P_Y_star / rho_Y_star) + abs(vy_YB[i][j]));
+                    double C = sqrt(gamma * P_X_star / rho_X_star) + abs(vx_XL[Ri][j]);
+                    C = max(C, sqrt(gamma * P_Y_star / rho_Y_star) + abs(vy_YB[i][Ti]));
                     C = max(C, sqrt(gamma * P_X_star / rho_X_star) + abs(vx_XR[i][j]));
                     C = max(C, sqrt(gamma * P_Y_star / rho_Y_star) + abs(vy_YT[i][j]));
 
-                    double flux_rho_X = momx_X_star - C * 0.5 * (rho_XL[i][j] - rho_XR[i][j]);
-                    double flux_rho_Y = momx_Y_star - C * 0.5 * (rho_YB[i][j] - rho_YT[i][j]);
+                    double flux_rho_X = momx_X_star - C * 0.5 * (rho_XL[Ri][j] - rho_XR[i][j]);
+                    double flux_rho_Y = momx_Y_star - C * 0.5 * (rho_YB[i][Ti] - rho_YT[i][j]);
                     
                     double flux_momx_X;
                     flux_momx_X = momx_X_star * momx_X_star / rho_X_star + P_X_star;
-                    flux_momx_X = flux_momx_X - C * 0.5 * (rho_XL[i][j] * vx_XL[i][j] - rho_XR[i][j] * vx_XR[i][j]);
+                    flux_momx_X = flux_momx_X - C * 0.5 * (rho_XL[Ri][j] * vx_XL[Ri][j] - rho_XR[i][j] * vx_XR[i][j]);
                     
                     double flux_momx_Y; 
                     flux_momx_Y = momy_Y_star * momx_Y_star / rho_Y_star;
-                    flux_momx_Y = flux_momx_Y - C * 0.5 * (rho_YB[i][j] * vx_YB[i][j] - rho_YT[i][j] * vx_YT[i][j]);
+                    flux_momx_Y = flux_momx_Y - C * 0.5 * (rho_YB[i][Ti] * vx_YB[i][Ti] - rho_YT[i][j] * vx_YT[i][j]);
                     
                     double flux_momy_X;
                     flux_momy_X = momy_X_star * momx_X_star / rho_X_star; 
-                    flux_momy_X = flux_momy_X - C * 0.5 * (rho_XL[i][j] * vy_XL[i][j] - rho_XR[i][j] * vy_XR[i][j]);
+                    flux_momy_X = flux_momy_X - C * 0.5 * (rho_XL[Ri][j] * vy_XL[Ri][j] - rho_XR[i][j] * vy_XR[i][j]);
                     
                     double flux_momy_Y;
                     flux_momy_Y = momy_Y_star * momx_Y_star / rho_Y_star + P_X_star;
-                    flux_momy_Y = flux_momy_Y - C * 0.5 * (rho_YB[i][j] * vy_YB[i][j] - rho_YT[i][j] * vy_YT[i][j]);
+                    flux_momy_Y = flux_momy_Y - C * 0.5 * (rho_YB[i][Ti] * vy_YB[i][Ti] - rho_YT[i][j] * vy_YT[i][j]);
 
                     double flux_E_X;
                     flux_E_X = (E_X_star + P_X_star) * momx_X_star / rho_X_star;
-                    flux_E_X = flux_E_X - C * 0.5 * ( (P_XL[i][j]/(gamma - 1) + 0.5 * rho_XL[i][j] * 
-                                        (vx_XL[i][j]*vx_XL[i][j] + vy_XL[i][j]*vy_XL[i][j]) ) - 
+                    flux_E_X = flux_E_X - C * 0.5 * ( (P_XL[Ri][j]/(gamma - 1) + 0.5 * rho_XL[Ri][j] * 
+                                        (vx_XL[Ri][j]*vx_XL[Ri][j] + vy_XL[Ri][j]*vy_XL[Ri][j]) ) - 
                                         (P_XR[i][j]/(gamma - 1) + 0.5 * rho_XR[i][j] * 
                                         (vx_XR[i][j]*vx_XR[i][j] + vy_XR[i][j]*vy_XR[i][j]) ) );
 
                     double flux_E_Y;
                     flux_E_Y = (E_Y_star + P_Y_star) * momx_Y_star / rho_Y_star;
-                    flux_E_Y = flux_E_Y - C * 0.5 * ( (P_YB[i][j]/(gamma - 1) + 0.5 * rho_YB[i][j] * 
-                                        (vx_YB[i][j]*vx_YB[i][j] + vy_YB[i][j]*vy_YB[i][j]) ) - 
+                    flux_E_Y = flux_E_Y - C * 0.5 * ( (P_YB[i][Ti]/(gamma - 1) + 0.5 * rho_YB[i][Ti] * 
+                                        (vx_YB[i][Ti]*vx_YB[i][Ti] + vy_YB[i][Ti]*vy_YB[i][Ti]) ) - 
                                         (P_YT[i][j]/(gamma - 1) + 0.5 * rho_YT[i][j] * 
                                         (vx_YT[i][j]*vx_YT[i][j] + vy_YT[i][j]*vy_YT[i][j]) ) );
                     
-                    
+                    // These are the fluxes through the right and top faces of cell (i,j)
                     this->flux_rho_X[i][j] = flux_rho_X;
                     this->flux_rho_Y[i][j] = flux_rho_Y;
                     this->flux_momx_X[i][j] = flux_momx_X;
@@ -371,28 +384,27 @@ class Fluid {
                     double pressure_prime = pressure[i][j] - 0.5 * dt * (gradX_Pressure * vx[i][j] + gradY_Pressure * vy[i][j] +
                                                                 gamma * pressure[i][j] * (gradX_Vx + gradY_Vy));
 
-                    // NOTE: we roll left and bottom faces to the 
-                    // neighboring cell, each cell will store the face values
-                    // for its right and top faces
-                    this->rho_XL[Li][j] = rho_prime - gradX_Density * dx / 2.0;
+                    // Store the extrapolated values at faces
+                    // Will later use to calculate fluxes via Riemann solver
+                    this->rho_XL[i][j] = rho_prime - gradX_Density * dx / 2.0;
                     this->rho_XR[i][j] = rho_prime + gradX_Density * dx / 2.0;
 
-                    this->rho_YB[i][Bi] = rho_prime - gradY_Density * dy / 2.0;
+                    this->rho_YB[i][j] = rho_prime - gradY_Density * dy / 2.0;
                     this->rho_YT[i][j] = rho_prime + gradY_Density * dy / 2.0;
 
-                    this->vx_XL[Li][j] = vx_prime - gradX_Vx * dx / 2.0;
-                    this->vx_XR[i][i] = vx_prime + gradX_Vx * dx / 2.0;
-                    this->vx_YB[i][Bi] = vx_prime - gradY_Vx * dy / 2.0;
+                    this->vx_XL[i][j] = vx_prime - gradX_Vx * dx / 2.0;
+                    this->vx_XR[i][j] = vx_prime + gradX_Vx * dx / 2.0;
+                    this->vx_YB[i][j] = vx_prime - gradY_Vx * dy / 2.0;
                     this->vx_YT[i][j] = vx_prime + gradY_Vx * dy / 2.0; 
 
-                    this->vy_XL[Li][j] = vy_prime - gradX_Vy * dx / 2.0;
+                    this->vy_XL[i][j] = vy_prime - gradX_Vy * dx / 2.0;
                     this->vy_XR[i][j] = vy_prime + gradX_Vy * dx / 2.0;
-                    this->vy_YB[i][Bi] = vy_prime - gradY_Vy * dy / 2.0;
+                    this->vy_YB[i][j] = vy_prime - gradY_Vy * dy / 2.0;
                     this->vy_YT[i][j] = vy_prime + gradY_Vy * dy / 2.0;
 
-                    this->P_XL[Li][j] = pressure_prime - gradX_Pressure * dx / 2.0;
+                    this->P_XL[i][j] = pressure_prime - gradX_Pressure * dx / 2.0;
                     this->P_XR[i][j] = pressure_prime + gradX_Pressure * dx / 2.0;
-                    this->P_YB[i][Bi] = pressure_prime - gradY_Pressure * dy / 2.0;
+                    this->P_YB[i][j] = pressure_prime - gradY_Pressure * dy / 2.0;
                     this->P_YT[i][j] = pressure_prime + gradY_Pressure * dy / 2.0;
                 }
             }
