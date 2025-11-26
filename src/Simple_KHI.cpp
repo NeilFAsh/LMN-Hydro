@@ -193,6 +193,7 @@ class Fluid {
         private:
         void updateStates(double dt){
             // update cell-centered states using computed fluxes
+            int throwException = 0;
             for (int i = 0; i < Nx; i++) {
                 for (int j = 0; j < Ny; j++) {
 
@@ -232,17 +233,26 @@ class Fluid {
                     density[i][j] = mass / cellVol;
                     vx[i][j] = momx / mass;
                     vy[i][j] = momy / mass;
-                    pressure[i][j] = (E - 0.5 * mass * (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j])) * (gamma - 1) / cellVol;
+                    pressure[i][j] = (E - 0.5 * mass * (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j])) / cellVol * (gamma - 1);
+                    
+                    // This really shouldn't be done, ideally we would modify
+                    // the Riemann solver to prevent negative pressures/densities
+                    // if (pressure[i][j] <= 0.0) { 
+                    //     pressure[i][j] = 1e-8;
+                    // }
                     
                     if (density[i][j] <= 0.0) {
                         cout << "Negative density encountered at (" << i << "," << j << "): " << density[i][j] << endl;
-                        throw runtime_error("Simulation aborted due to negative or zero density.");
+                        throwException = 1;
                     };
                     if (pressure[i][j] <= 0.0) {
                         cout << "Negative pressure encountered at (" << i << "," << j << "): " << pressure[i][j] << endl;
-                        throw runtime_error("Simulation aborted due to negative or zero pressure.");
+                        throwException = 1;
                     };
                 }
+            }
+            if (throwException){
+                throw runtime_error("Simulation encountered non-physical state (negative or zero density or pressure).");
             }
         };  
         private:
