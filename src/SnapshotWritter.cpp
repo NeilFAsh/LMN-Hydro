@@ -12,6 +12,22 @@ SnapshotWriter::SnapshotWriter(const std::string& outputDir)
     std::filesystem::create_directories(outputDir);
 }
 
+// Helper: flatten vector<vector<double>> into contiguous array
+std::vector<double> SnapshotWriter::flatten(
+    const std::vector<std::vector<double>>& field,
+    size_t Nx, size_t Ny)
+{
+    std::vector<double> flat;
+    flat.reserve(Nx * Ny);
+
+    for (size_t j = 0; j < Ny; j++) {
+        for (size_t i = 0; i < Nx; i++) {
+            flat.push_back(field[j][i]);
+        }
+    }
+    return flat;
+}
+
 
 // ================= PRIVATE ===================
 void SnapshotWriter::add_npy_to_zip(
@@ -86,11 +102,18 @@ void SnapshotWriter::save_npz_snapshot(
 
     mz_zip_writer_init_file(&zip, path.c_str(), 0); // creates the zip file with the given name
 
+    // Flatten 2D vectors into contiguous 1D arrays
+        
+    auto rho_f = flatten(rho, Nx, Ny);
+    auto vx_f  = flatten(vx,  Nx, Ny);
+    auto vy_f  = flatten(vy,  Nx, Ny);
+    auto P_f   = flatten(P,   Nx, Ny);
+
     // Add each file as a .npy files to the zip archive
-    add_npy_to_zip(&zip, "rho", rho.data(), Nx, Ny);
-    add_npy_to_zip(&zip, "vx",  vx.data(), Nx, Ny);
-    add_npy_to_zip(&zip, "vy",  vy.data(), Nx, Ny);
-    add_npy_to_zip(&zip, "P",   P.data(),  Nx, Ny);
+    add_npy_to_zip(&zip, "rho", rho_f.data(), Nx, Ny);
+    add_npy_to_zip(&zip, "vx",  vx_f.data(), Nx, Ny);
+    add_npy_to_zip(&zip, "vy",  vy_f.data(), Nx, Ny);
+    add_npy_to_zip(&zip, "P",   P_f.data(),  Nx, Ny);
 
     mz_zip_writer_finalize_archive(&zip); // finalizes the archive
     mz_zip_writer_end(&zip); // cleans up the mz_zip_archive structure
