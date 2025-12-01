@@ -4,6 +4,8 @@
 #include <algorithm>
 #include <cassert>
 #include "SnapshotWriter.hpp"
+#include <sstream>
+#include <iomanip>
 
 using namespace std;
 
@@ -181,7 +183,14 @@ class Fluid {
 
                 if (t >= numOutputs * tOut){
                     printState(numOutputs);
-                    writer.save_npz_snapshot("snapshot_" + std::to_string(numOutputs) + ".npz", density, vx, vy, pressure, Nx, Ny);
+                    
+                    // Format filename with leading zeros
+                    std::ostringstream oss;
+                    oss << std::setw(4) << std::setfill('0') << numOutputs; // "0000"
+                    std::string filenum = oss.str();
+                    // save
+                    writer.save_npz_snapshot("snapshot_" + filenum + ".npz", density, vx, vy, pressure, Nx, Ny);
+                    
                     numOutputs++;
                 }
 

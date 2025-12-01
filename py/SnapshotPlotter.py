@@ -19,7 +19,7 @@ parser.add_argument("--streamlines", "-l", action="store_true", help="Enable str
 
 args = parser.parse_args()
 N = args.snapshot_number
-filename = f"./output/snapshot_{N}.npz"
+filename = f"./output/snapshot_{N:04d}.npz"
 # filename = glob.glob(f"../build/output/snapshot_{N}.npz")[0]
 
 # Load file safely
@@ -38,7 +38,7 @@ vy  = snap["vy"]
 
 # Plot density
 fig = plt.figure(figsize=(8,6))
-bkg = plt.imshow(rho.T, origin='lower',cmap='Spectral')
+bkg = plt.imshow(rho.T, origin='lower',cmap='Spectral_r',vmin=0.8,vmax=2.2)
 
 # Add time annotation
 props = dict(facecolor='w',alpha=0.75, edgecolor = 'gray',boxstyle='round,pad=0.25')
