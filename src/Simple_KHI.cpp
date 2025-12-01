@@ -181,7 +181,7 @@ class Fluid {
 
                 if (t >= numOutputs * tOut){
                     printState(numOutputs);
-                    writer.save_npz_snapshot("snapshot_" + std::to_string(numOutputs) + ".npz", rho, vx, vy, P, Nx, Ny);
+                    writer.save_npz_snapshot("snapshot_" + std::to_string(numOutputs) + ".npz", density, vx, vy, pressure, Nx, Ny);
                     numOutputs++;
                 }
 

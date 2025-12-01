@@ -72,10 +72,10 @@ void SnapshotWriter::add_npy_to_zip(
 // ================= PUBLIC ===================
 void SnapshotWriter::save_npz_snapshot(
     const std::string& filename,
-    const std::vector<double>& rho,
-    const std::vector<double>& vx,
-    const std::vector<double>& vy,
-    const std::vector<double>& P,
+    const std::vector<std::vector<double>>& rho,
+    const std::vector<std::vector<double>>& vx,
+    const std::vector<std::vector<double>>& vy,
+    const std::vector<std::vector<double>>& P,
     size_t Nx,
     size_t Ny
 ) {
