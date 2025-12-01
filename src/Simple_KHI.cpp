@@ -3,6 +3,7 @@
 #include <cmath>
 #include <algorithm>
 #include <cassert>
+#include "SnapshotWriter.hpp"
 
 using namespace std;
 
@@ -168,6 +169,9 @@ class Fluid {
         void runSimulation(double tFinal, double tOut){
 
             initializeKHI();
+            
+            SnapshotWriter writer("output");   // creates "output/" folder
+
             t = 0.0;
             this->tFinal = tFinal;
             this->tOut = tOut;
@@ -177,6 +181,7 @@ class Fluid {
 
                 if (t >= numOutputs * tOut){
                     printState(numOutputs);
+                    writer.save_npz_snapshot("snapshot_" + std::to_string(numOutputs) + ".npz", rho, vx, vy, P, Nx, Ny);
                     numOutputs++;
                 }
 
