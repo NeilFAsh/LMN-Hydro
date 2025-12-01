@@ -277,95 +277,128 @@ class Fluid {
             }
         };  
         private:
-        void RiemannSolver(){
-            // solve the Riemann problems at each face
-            // will populate the matrices containing fluxes at each face
-            for (int i = 0; i < Nx; i++) {
-                for (int j = 0; j < Ny; j++) {
+        void RiemannSolver() {
+            // Solve Riemann problems at each right/top face of cell (i,j).
+            // We'll assemble conserved left and right states from the face-extrapolated primitives
+            // and apply the Rusanov flux formula.
+            for (int i = 0; i < Nx; ++i) {
+                for (int j = 0; j < Ny; ++j) {
 
-                    // Periodic boundary conditions
-                    int Ri = (i + 1) % Nx; // right
-                    int Li = (i - 1 + Nx) % Nx; //left 
+                    // neighbor indices (periodic)
+                    int Ri = (i + 1) % Nx;
+                    int Li = (i - 1 + Nx) % Nx;
+                    int Ti = (j + 1) % Ny;
+                    int Bi = (j - 1 + Ny) % Ny;
 
-                    int Ti = (j + 1) % Ny; // top
-                    int Bi = (j - 1 + Ny) % Ny; // bottom
+                    //
+                    // --- X-face between cell i and Ri (right face of cell i)
+                    // left state = right-extrapolation of cell i  -> (rho_XR[i][j], vx_XR[i][j], vy_XR[i][j], P_XR[i][j])
+                    // right state = left-extrapolation of cell Ri -> (rho_XL[Ri][j], vx_XL[Ri][j], vy_XL[Ri][j], P_XL[Ri][j])
+                    //
+                    {
+                        // primitives L (cell i right face)
+                        double rhoL = rho_XR[i][j];
+                        double uL = vx_XR[i][j];
+                        double vL = vy_XR[i][j];
+                        double pL = P_XR[i][j];
 
+                        // primitives R (cell Ri left face)
+                        double rhoR = rho_XL[Ri][j];
+                        double uR = vx_XL[Ri][j];
+                        double vR = vy_XL[Ri][j];
+                        double pR = P_XL[Ri][j];
 
-                    // Simple Riemann solver: average states 
-                    // Average the contributions from neighboring cells
-                    // Take the left edge from the cell to the right,
-                    // and the bottom edge from the cell above
-                    double rho_X_star = 0.5 * (rho_XL[Ri][j] + rho_XR[i][j]);
-                    double rho_Y_star = 0.5 * (rho_YB[i][Ti] + rho_YT[i][j]);
+                        // conserved variables U = [rho, rho*u, rho*v, E]
+                        double UL_rho = rhoL;
+                        double UL_mx = rhoL * uL;
+                        double UL_my = rhoL * vL;
+                        double UL_E  = pL / (gamma - 1.0) + 0.5 * rhoL * (uL*uL + vL*vL);
 
-                    double momx_X_star = 0.5 * (rho_XL[Ri][j] * vx_XL[Ri][j] + rho_XR[i][j] * vx_XR[i][j]);
-                    double momx_Y_star = 0.5 * (rho_YB[i][Ti] * vx_YB[i][Ti] + rho_YT[i][j] * vx_YT[i][j]);
-                    double momy_X_star = 0.5 * (rho_XL[Ri][j] * vy_XL[Ri][j] + rho_XR[i][j] * vy_XR[i][j]);
-                    double momy_Y_star = 0.5 * (rho_YB[i][Ti] * vy_YB[i][Ti] + rho_YT[i][j] * vy_YT[i][j]);
+                        double UR_rho = rhoR;
+                        double UR_mx = rhoR * uR;
+                        double UR_my = rhoR * vR;
+                        double UR_E  = pR / (gamma - 1.0) + 0.5 * rhoR * (uR*uR + vR*vR);
 
-                    double E_X_star = 0.5 * (P_XL[Ri][j]/(gamma - 1) + 0.5 * rho_XL[Ri][j] * 
-                                        (vx_XL[Ri][j]*vx_XL[Ri][j] + vy_XL[Ri][j]*vy_XL[Ri][j]) +
-                                        P_XR[i][j]/(gamma - 1) + 0.5 * rho_XR[i][j] * 
-                                        (vx_XR[i][j]*vx_XR[i][j] + vy_XR[i][j]*vy_XR[i][j]));
-                    double E_Y_star = 0.5 * (P_YB[i][Ti]/(gamma - 1) + 0.5 * rho_YB[i][Ti] * 
-                                        (vx_YB[i][Ti]*vx_YB[i][Ti] + vy_YB[i][Ti]*vy_YB[i][Ti]) +
-                                        P_YT[i][j]/(gamma - 1) + 0.5 * rho_YT[i][j] * 
-                                        (vx_YT[i][j]*vx_YT[i][j] + vy_YT[i][j]*vy_YT[i][j]));
+                        // physical flux in x-direction: F(U) = [rho*u, rho*u^2 + p, rho*u*v, (E + p)*u]
+                        double FL_rho = UL_mx;
+                        double FL_mx  = UL_mx * uL + pL;
+                        double FL_my  = UL_my * uL;
+                        double FL_E   = (UL_E + pL) * uL;
 
-                    double P_X_star = (gamma - 1) * (E_X_star - 0.5 * (momx_X_star*momx_X_star + momy_X_star*momy_X_star) / rho_X_star);
-                    double P_Y_star = (gamma - 1) * (E_Y_star - 0.5 * (momx_Y_star*momx_Y_star + momy_Y_star*momy_Y_star) / rho_Y_star);
+                        double FR_rho = UR_mx;
+                        double FR_mx  = UR_mx * uR + pR;
+                        double FR_my  = UR_my * uR;
+                        double FR_E   = (UR_E + pR) * uR;
 
-                    // compute fluxes 
-                    double C = sqrt(gamma * P_XL[Ri][j] / rho_XL[Ri][j]) + abs(vx_XL[Ri][j]);
-                    C = max(C, sqrt(gamma * P_XR[i][j] / rho_XR[i][j]) + abs(vx_XR[i][j]));
-                    C = max(C, sqrt(gamma * P_YB[i][Ti] / rho_YB[i][Ti]) + abs(vy_YB[i][Ti]));
-                    C = max(C, sqrt(gamma * P_YT[i][j] / rho_YT[i][j]) + abs(vy_YT[i][j]));
+                        // compute local max signal speed in x (Rusanov): s = max(|u| + c) over L,R
+                        double cL = sqrt(max(0.0, gamma * pL / rhoL));
+                        double cR = sqrt(max(0.0, gamma * pR / rhoR));
+                        double smax = std::max(fabs(uL) + cL, fabs(uR) + cR);
 
-                    double flux_rho_X = momx_X_star - C * 0.5 * (rho_XL[Ri][j] - rho_XR[i][j]);
-                    double flux_rho_Y = momx_Y_star - C * 0.5 * (rho_YB[i][Ti] - rho_YT[i][j]);
-                    
-                    double flux_momx_X;
-                    flux_momx_X = momx_X_star * momx_X_star / rho_X_star + P_X_star;
-                    flux_momx_X = flux_momx_X - C * 0.5 * (rho_XL[Ri][j] * vx_XL[Ri][j] - rho_XR[i][j] * vx_XR[i][j]);
-                    
-                    double flux_momx_Y; 
-                    flux_momx_Y = momy_Y_star * momx_Y_star / rho_Y_star;
-                    flux_momx_Y = flux_momx_Y - C * 0.5 * (rho_YB[i][Ti] * vx_YB[i][Ti] - rho_YT[i][j] * vx_YT[i][j]);
-                    
-                    double flux_momy_X;
-                    flux_momy_X = momy_X_star * momx_X_star / rho_X_star; 
-                    flux_momy_X = flux_momy_X - C * 0.5 * (rho_XL[Ri][j] * vy_XL[Ri][j] - rho_XR[i][j] * vy_XR[i][j]);
-                    
-                    double flux_momy_Y;
-                    flux_momy_Y = momy_Y_star * momx_Y_star / rho_Y_star + P_Y_star;
-                    flux_momy_Y = flux_momy_Y - C * 0.5 * (rho_YB[i][Ti] * vy_YB[i][Ti] - rho_YT[i][j] * vy_YT[i][j]);
+                        // Rusanov flux: 0.5*(F_L + F_R) - 0.5 * smax * (U_R - U_L)
+                        this->flux_rho_X[i][j] = 0.5 * (FL_rho + FR_rho) - 0.5 * smax * (UR_rho - UL_rho);
+                        this->flux_momx_X[i][j] = 0.5 * (FL_mx + FR_mx) - 0.5 * smax * (UR_mx - UL_mx);
+                        this->flux_momy_X[i][j] = 0.5 * (FL_my + FR_my) - 0.5 * smax * (UR_my - UL_my);
+                        this->flux_E_X[i][j]    = 0.5 * (FL_E + FR_E) - 0.5 * smax * (UR_E - UL_E);
+                    }
 
-                    double flux_E_X;
-                    flux_E_X = (E_X_star + P_X_star) * momx_X_star / rho_X_star;
-                    flux_E_X = flux_E_X - C * 0.5 * ( (P_XL[Ri][j]/(gamma - 1) + 0.5 * rho_XL[Ri][j] * 
-                                        (vx_XL[Ri][j]*vx_XL[Ri][j] + vy_XL[Ri][j]*vy_XL[Ri][j]) ) - 
-                                        (P_XR[i][j]/(gamma - 1) + 0.5 * rho_XR[i][j] * 
-                                        (vx_XR[i][j]*vx_XR[i][j] + vy_XR[i][j]*vy_XR[i][j]) ) );
+                    //
+                    // --- Y-face between cell j and Ti (top face of cell (i,j))
+                    // bottom state = top-extrapolation of cell j -> (rho_YT[i][j] is top of cell (i,j)?)
+                    // careful indexing: we'll define:
+                    // left/bottom = cell (i,j) top face is YT[i][j] (that's the top value in cell i,j)
+                    // right/top = cell (i,Ti) bottom face is YB[i][Ti]
+                    //
+                    {
+                        // primitives L (bottom side of top-face) = YT of (i,j) is the state just below the face
+                        // but consistent with your notation: we treat "left" as the lower side (cell (i,j) top extrapolation)
+                        double rhoL = rho_YT[i][j];
+                        double uL = vx_YT[i][j];
+                        double vL = vy_YT[i][j];
+                        double pL = P_YT[i][j];
 
-                    double flux_E_Y;
-                    flux_E_Y = (E_Y_star + P_Y_star) * momx_Y_star / rho_Y_star;
-                    flux_E_Y = flux_E_Y - C * 0.5 * ( (P_YB[i][Ti]/(gamma - 1) + 0.5 * rho_YB[i][Ti] * 
-                                        (vx_YB[i][Ti]*vx_YB[i][Ti] + vy_YB[i][Ti]*vy_YB[i][Ti]) ) - 
-                                        (P_YT[i][j]/(gamma - 1) + 0.5 * rho_YT[i][j] * 
-                                        (vx_YT[i][j]*vx_YT[i][j] + vy_YT[i][j]*vy_YT[i][j]) ) );
-                    
-                    // These are the fluxes through the right and top faces of cell (i,j)
-                    this->flux_rho_X[i][j] = flux_rho_X;
-                    this->flux_rho_Y[i][j] = flux_rho_Y;
-                    this->flux_momx_X[i][j] = flux_momx_X;
-                    this->flux_momx_Y[i][j] = flux_momx_Y;
-                    this->flux_momy_X[i][j] = flux_momy_X;
-                    this->flux_momy_Y[i][j] = flux_momy_Y;
-                    this->flux_E_X[i][j] = flux_E_X;
-                    this->flux_E_Y[i][j] = flux_E_Y;
+                        // primitives R (upper side of top-face) = YB of (i,Ti) is the state just above the face
+                        double rhoR = rho_YB[i][Ti];
+                        double uR = vx_YB[i][Ti];
+                        double vR = vy_YB[i][Ti];
+                        double pR = P_YB[i][Ti];
+
+                        // conserved variables
+                        double UL_rho = rhoL;
+                        double UL_mx  = rhoL * uL;
+                        double UL_my  = rhoL * vL;
+                        double UL_E   = pL / (gamma - 1.0) + 0.5 * rhoL * (uL*uL + vL*vL);
+
+                        double UR_rho = rhoR;
+                        double UR_mx  = rhoR * uR;
+                        double UR_my  = rhoR * vR;
+                        double UR_E   = pR / (gamma - 1.0) + 0.5 * rhoR * (uR*uR + vR*vR);
+
+                        // physical flux in y-direction: G(U) = [rho*v, rho*u*v, rho*v^2 + p, (E + p)*v]
+                        double GL_rho = UL_my;
+                        double GL_mx  = UL_mx * vL;
+                        double GL_my  = UL_my * vL + pL;
+                        double GL_E   = (UL_E + pL) * vL;
+
+                        double GR_rho = UR_my;
+                        double GR_mx  = UR_mx * vR;
+                        double GR_my  = UR_my * vR + pR;
+                        double GR_E   = (UR_E + pR) * vR;
+
+                        // compute local max signal speed in y
+                        double cL = sqrt(max(0.0, gamma * pL / rhoL));
+                        double cR = sqrt(max(0.0, gamma * pR / rhoR));
+                        double smax = std::max(fabs(vL) + cL, fabs(vR) + cR);
+
+                        // Rusanov flux in y-direction
+                        this->flux_rho_Y[i][j] = 0.5 * (GL_rho + GR_rho) - 0.5 * smax * (UR_rho - UL_rho);
+                        this->flux_momx_Y[i][j] = 0.5 * (GL_mx + GR_mx) - 0.5 * smax * (UR_mx - UL_mx);
+                        this->flux_momy_Y[i][j] = 0.5 * (GL_my + GR_my) - 0.5 * smax * (UR_my - UL_my);
+                        this->flux_E_Y[i][j]    = 0.5 * (GL_E + GR_E) - 0.5 * smax * (UR_E - UL_E);
+                    }
                 }
             }
-        };
+        }
         private:
         void extrapolateToFaces(float dt){
             // extrapolate cell-centered values to faces
@@ -501,7 +534,7 @@ int main(){
     Fluid fluid(Nx, Ny, boxSizeX, boxSizeY);
     cout << "Initialized fluid domain of size " << Nx << " x " << Ny << endl;
 
-    fluid.useSlopeLimiter = 1; // enable slope limiter
+    fluid.useSlopeLimiter = 0; // enable slope limiter
     //fluid.initializeKHI();
     //fluid.runTimeStep();
     try {
