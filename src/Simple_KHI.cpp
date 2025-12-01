@@ -150,16 +150,18 @@ class Fluid {
             double totalEnergy = 0.0;
             double totalMass = 0.0;
             double totalMomentumX = 0.0;
+            double totalMomentumY = 0.0;
             for(int j = Ny - 1; j >= 0; j--){
                 for(int i = 0; i < Nx; i++){
                     totalEnergy += (pressure[i][j]/(gamma - 1) + 0.5 * density[i][j] * 
                                     (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j])) * cellVol;
                     totalMass += density[i][j] * cellVol;
                     totalMomentumX += density[i][j] * vx[i][j] * cellVol;
+                    totalMomentumY += density[i][j] * vy[i][j] * cellVol;
                 }
             }
-            cout << "step = " << step << "t = " << t << ", E = " << totalEnergy << ", Mass = " << totalMass 
-                     << ", Px = " << totalMomentumX << endl;
+            cout << "t = " << t << ", E = " << totalEnergy << ", Mass = " << totalMass 
+                     << ", Px = " << totalMomentumX << ", Py = " << totalMomentumY << endl;
         };
 
         public:
@@ -179,6 +181,16 @@ class Fluid {
                 }
 
                 runTimeStep();
+
+                double minP = 1e10;
+                double maxP = 0.0;
+                for (int i = 0; i < Nx; i++){
+                    for (int j = 0; j < Ny; j++){
+                        minP = min(minP, pressure[i][j]);
+                        maxP = max(maxP, pressure[i][j]);
+                    }
+                }
+                cout << "Min/ max pressure after timestep: " << minP << "  " << maxP << endl;
             }
         };
         public:
@@ -229,11 +241,20 @@ class Fluid {
                     E -= dt * dy * (flux_E_X[i][j] - flux_E_X[Li][j])
                              + dt * dx * (flux_E_Y[i][j] - flux_E_Y[i][Bi]);
 
+                    double e_cell = E / cellVol;
+                    double ke = 0.5 * mass / cellVol * 
+                                    ( (momx / mass)*(momx / mass) + (momy / mass)*(momy / mass) );
+                    double e_internal = e_cell - ke;
+                    
+                    // Note: this causes non-conservation of energy
+                    //if (e_internal < 1e-12) e_internal = 1e-12;
+
                     // update primitive variables
                     density[i][j] = mass / cellVol;
                     vx[i][j] = momx / mass;
                     vy[i][j] = momy / mass;
-                    pressure[i][j] = (E - 0.5 * mass * (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j])) / cellVol * (gamma - 1);
+                    pressure[i][j] = (gamma - 1.0) * e_internal;
+                    //(E - 0.5 * mass * (vx[i][j]*vx[i][j] + vy[i][j]*vy[i][j])) / cellVol * (gamma - 1);
                     
                     // This really shouldn't be done, ideally we would modify
                     // the Riemann solver to prevent negative pressures/densities
