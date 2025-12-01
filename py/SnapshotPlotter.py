@@ -2,7 +2,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import argparse
-plt.style.use('./mpl_style.txt')
+import sys
+import glob
+
+# plt.style.use('./mpl_style.txt')
 
 #  Script that plots and saves a snapshot from a simulation output file.
 #Usage example:
@@ -16,7 +19,8 @@ parser.add_argument("--streamlines", "-l", action="store_true", help="Enable str
 
 args = parser.parse_args()
 N = args.snapshot_number
-filename = f"output/snapshot_{N}.npz"
+filename = f"./output/snapshot_{N}.npz"
+# filename = glob.glob(f"../build/output/snapshot_{N}.npz")[0]
 
 # Load file safely
 try:
@@ -58,6 +62,6 @@ cax = divider.append_axes("right", size="5%", pad=0.05)
 cbar = fig.colorbar(bkg, cax=cax)
 cbar.set_label('Density') # Label the colorbar
 
-plt.savefig(f"output/frame_{N:04d}.png", dpi=300, bbox_inches='tight')
+plt.savefig(f"./output/frame_{N:04d}.png", dpi=300, bbox_inches='tight')
 
 plt.show()
