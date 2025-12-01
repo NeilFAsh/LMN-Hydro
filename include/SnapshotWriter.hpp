@@ -19,6 +19,13 @@ public:
     );
 
 private:
+
+    std::vector<double> flatten(
+        const std::vector<std::vector<double>>& field,
+        size_t Nx,
+        size_t Ny
+    );
+
     void add_npy_to_zip(
         void* zipArchive,
         const std::string& name,
