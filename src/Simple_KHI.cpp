@@ -15,6 +15,10 @@ class Fluid {
         vector<vector<double>> vy;
         vector<vector<double>> pressure;
         vector<vector<double>> density;
+        double totalEnergy;
+        double totalMass;
+        double totalMomentumX;
+        double totalMomentumY;
         float t;
         float tFinal;
         float tOut;
@@ -150,10 +154,10 @@ class Fluid {
         
         private:
         void printState(int step){
-            double totalEnergy = 0.0;
-            double totalMass = 0.0;
-            double totalMomentumX = 0.0;
-            double totalMomentumY = 0.0;
+            totalEnergy = 0.0;
+            totalMass = 0.0;
+            totalMomentumX = 0.0;
+            totalMomentumY = 0.0;
             for(int j = Ny - 1; j >= 0; j--){
                 for(int i = 0; i < Nx; i++){
                     totalEnergy += (pressure[i][j]/(gamma - 1) + 0.5 * density[i][j] * 
@@ -189,7 +193,7 @@ class Fluid {
                     oss << std::setw(4) << std::setfill('0') << numOutputs; // "0000"
                     std::string filenum = oss.str();
                     // save
-                    writer.save_npz_snapshot("snapshot_" + filenum + ".npz", density, vx, vy, pressure, Nx, Ny);
+                    writer.save_npz_snapshot("snapshot_" + filenum + ".npz", density, vx, vy, pressure, Nx, Ny, totalMass, totalEnergy, totalMomentumX, totalMomentumY);
                     
                     numOutputs++;
                 }

@@ -23,7 +23,11 @@ public:
         const std::vector<std::vector<double>>& vy,
         const std::vector<std::vector<double>>& P,
         size_t Nx,
-        size_t Ny
+        size_t Ny,
+        double totalMass,
+        double totalEnergy,
+        double totalMomentumX,
+        double totalMomentumY
     );
 
 private:
