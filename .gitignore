@@ -1,2 +1,8 @@
 # Build directory
 build/
+.vscode/
+*.o
+*.obj
+*.exe
+*.out
+*.log
