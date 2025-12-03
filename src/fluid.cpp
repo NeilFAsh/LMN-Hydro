@@ -166,7 +166,7 @@ void Fluid::runSimulation(double tFinal, double tOut){
                 maxP = max(maxP, pressure[i][j]);
             }
         }
-        cout << "Min/ max pressure after timestep: " << minP << "  " << maxP << endl;
+        //cout << "Min/ max pressure after timestep: " << minP << "  " << maxP << endl;
     }
 };
         
@@ -555,25 +555,25 @@ void timeStepBenchmark(int Nx, int Ny, int useSlopeLimiter){
 };
 
 
-int main(int argc, char* argv[]){
-    // Simulation parameters
+// int main(int argc, char* argv[]){
+//     // Simulation parameters
 
-    int power; 
+//     int power; 
 
-    if (argc < 1){
-        power = 6;
-    } else {
-        power = atoi(argv[1]);
-    }
+//     if (argc < 1){
+//         power = 6;
+//     } else {
+//         power = atoi(argv[1]);
+//     }
 
-    int Nx = pow(2, power); //1024;
-    int Ny = pow(2, power); //1024;
+//     int Nx = pow(2, power); //1024;
+//     int Ny = pow(2, power); //1024;
     
 
-    cout << "Starting Fluid Solver Benchmarking with Nx = " << Nx << ", Ny = " << Ny << endl;
-    timeStepBenchmark(Nx, Ny, 0); // without slope limiter
-    //timeStepBenchmark(Nx, Ny, 1); // with slope limiter
+//     cout << "Starting Fluid Solver Benchmarking with Nx = " << Nx << ", Ny = " << Ny << endl;
+//     timeStepBenchmark(Nx, Ny, 0); // without slope limiter
+//     //timeStepBenchmark(Nx, Ny, 1); // with slope limiter
 
     
-    return 0;
-}
+//     return 0;
+// }

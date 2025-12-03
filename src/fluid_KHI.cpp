@@ -14,7 +14,7 @@
 using namespace fluid;
 
 
-fluid_KHI::initialize_KHI(){
+void Fluid_KHI::initialize_KHI(){
     // Initialize a Kelvin-Helmholtz Instability setup
     initialize();
 
@@ -43,8 +43,8 @@ int main(){
     int Ny = 100;
     double boxSizeX = 1.0;
     double boxSizeY = 1.0;
-    double tFinal = 1.0; //2.0;
-    double tOut = 0.01;
+    double tFinal = 2.0; //2.0;
+    double tOut = 0.001;
 
     cout << "Starting Kelvin-Helmholtz Instability Simulation" << endl;
     Fluid_KHI fluid(Nx, Ny, boxSizeX, boxSizeY);

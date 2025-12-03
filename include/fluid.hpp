@@ -36,13 +36,13 @@ class Fluid {
         float gamma = 5./3.;
         int Nx;
         int Ny;
+        double BoxSizeX;
+        double BoxSizeY;
+        double dx;
+        double dy;
         
     private:
         
-        double dx;
-        double dy;
-        double BoxSizeX;
-        double BoxSizeY;
         double cellVol;
 
         vector<vector<double>> isNotBoundary;
