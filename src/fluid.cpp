@@ -106,23 +106,6 @@ void Fluid::initialize(){
     assert(this->_state == allocated);
     this->_state = initialized;
 
-    for(int i = 0; i < Nx; i++){
-        for(int j = 0; j < Ny; j++){
-            double y = (j + 0.5) * dy;
-            double x = (i + 0.5) * dx;
-            if(y < BoxSizeY * 0.75 && y > BoxSizeY * 0.25){
-                vx[i][j] = 0.5;
-                density[i][j] = 1.0;
-            } else {
-                vx[i][j] = -0.5;
-                density[i][j] = 2.0;
-            }
-            // Add perturbation
-            vy[i][j] = w0 * sin(4 * M_PI * x / BoxSizeX) * ( exp(-0.5*pow((y - BoxSizeY / 4) / sigma, 2))
-                                                + exp(-0.5*pow((y - 3 * BoxSizeY / 4) / sigma, 2)) );
-            pressure[i][j] = 2.5; // uniform pressure
-        }
-    }
 };
         
 void Fluid::printState(int step){
@@ -531,6 +514,46 @@ void Fluid::slopeLimiter(double &gradx, double &grady, vector<vector<double>> fi
     grady = max(0.0, min(1.0, ((field[i][Ti] - field[i][j]) / dy) / (grady + floor_y))) * grady;
 };
 
+void timeStepBenchmark(int Nx, int Ny, int useSlopeLimiter){
+    // Placeholder for timestep benchmarking function
+    double boxSizeX = 1.0;
+    double boxSizeY = 1.0;
+    double tFinal = 1.0; //2.0;
+    double tOut = 0.01;
+
+    struct timespec start, end;
+
+    Fluid fluid(Nx, Ny, boxSizeX, boxSizeY);
+    fluid.useSlopeLimiter = useSlopeLimiter; // enable slope limiter
+    fluid.initialize();
+
+    // set null conditions for benchmarking
+    for (int i = 0; i < Nx; i++){
+        for (int j = 0; j < Ny; j++){
+            fluid.density[i][j] = 1.0;
+            fluid.pressure[i][j] = 2.5;
+            fluid.vx[i][j] = 0.5;
+            fluid.vy[i][j] = 0.0;
+        }
+    }
+
+    // time execution for 10 timesteps
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (int j = 0; j < 10; j++){
+        fluid.runTimeStep();
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end);   
+
+    double time_taken = (end.tv_sec - start.tv_sec) + 
+                        (end.tv_nsec - start.tv_nsec) / 1e9;
+    
+    cout << "Avg time per step for Nx = " << Nx << ", Ny = " << Ny << " : " 
+            << time_taken / 10.0 << " seconds." << endl;
+
+    fluid.~Fluid();
+
+};
+
 
 int main(int argc, char* argv[]){
     // Simulation parameters
@@ -545,36 +568,12 @@ int main(int argc, char* argv[]){
 
     int Nx = pow(2, power); //1024;
     int Ny = pow(2, power); //1024;
-    double boxSizeX = 1.0;
-    double boxSizeY = 1.0;
-    double tFinal = 1.0; //2.0;
-    double tOut = 0.01;
-
-    struct timespec start, end;
-
-    cout << "Starting Kelvin-Helmholtz Instability Simulation" << endl;
-    Fluid fluid(Nx, Ny, boxSizeX, boxSizeY);
-    cout << "Initialized fluid domain of size " << Nx << " x " << Ny << endl;
-
-    fluid.useSlopeLimiter = 0; // enable slope limiter
-    //fluid.initializeKHI();
-    //fluid.runTimeStep();
-
-    fluid.initialize();
     
-    // time execution for 10 timesteps
-    clock_gettime(CLOCK_MONOTONIC, &start);
-    for (int j = 0; j < 10; j++){
 
-        fluid.runTimeStep();
-    }
-    clock_gettime(CLOCK_MONOTONIC, &end);
+    cout << "Starting Fluid Solver Benchmarking with Nx = " << Nx << ", Ny = " << Ny << endl;
+    timeStepBenchmark(Nx, Ny, 0); // without slope limiter
+    //timeStepBenchmark(Nx, Ny, 1); // with slope limiter
 
-    double time_taken = (end.tv_sec - start.tv_sec) + 
-                        (end.tv_nsec - start.tv_nsec) / 1e9;
     
-    cout << "Avg time per step for Nx = " << Nx << ", Ny = " << Ny << " : " 
-            << time_taken / 10.0 << " seconds." << endl;
-
     return 0;
 }
