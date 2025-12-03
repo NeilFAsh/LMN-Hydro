@@ -39,8 +39,8 @@ void Fluid_KHI::initialize_KHI(){
 
 int main(){
     // Simulation parameters
-    int Nx = 100;
-    int Ny = 100;
+    int Nx = 400;
+    int Ny = 400;
     double boxSizeX = 1.0;
     double boxSizeY = 1.0;
     double tFinal = 2.0; //2.0;
