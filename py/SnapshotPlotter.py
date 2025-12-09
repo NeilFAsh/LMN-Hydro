@@ -4,6 +4,7 @@ from mpl_toolkits.axes_grid1 import make_axes_locatable
 import argparse
 import sys
 import glob
+import os
 
 # plt.style.use('./mpl_style.txt')
 
@@ -19,7 +20,13 @@ parser.add_argument("--streamlines", "-l", action="store_true", help="Enable str
 
 args = parser.parse_args()
 N = args.snapshot_number
-filename = f"./output/snapshot_{N:04d}.npz"
+
+fig_dir = "./figs/movie/" 
+os.makedirs(fig_dir, exist_ok=True)
+
+snap_dir = "./output/"
+os.makedirs(snap_dir, exist_ok=True)
+filename = snap_dir+f"snapshot_{N:04d}.npz"
 # filename = glob.glob(f"../build/output/snapshot_{N}.npz")[0]
 
 # Load file safely
@@ -62,6 +69,6 @@ cax = divider.append_axes("right", size="5%", pad=0.05)
 cbar = fig.colorbar(bkg, cax=cax)
 cbar.set_label('Density') # Label the colorbar
 
-plt.savefig(f"./output/frame_{N:04d}.png", dpi=300, bbox_inches='tight')
+plt.savefig(fig_dir+f"frame_{N:04d}.png", dpi=300, bbox_inches='tight')
 
 plt.show()

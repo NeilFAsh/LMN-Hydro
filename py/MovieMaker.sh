@@ -16,7 +16,7 @@ STREAM_FLAG="-l" #Optional flag for streamline plotting. If needed, set to "--st
 # Finds all simulation files in the output directory, sorts and generates the frames for the movie.
 #!/bin/bash
 
-mkdir -p output
+#mkdir -p figs/movie/
 
 echo "Generating frames..."
 
@@ -27,6 +27,10 @@ for file in output/snapshot_*.npz; do
 done
 
 echo "Creating movie with ffmpeg..."
-ffmpeg -framerate 30 -i output/frame_%04d.png -pix_fmt yuv420p ./output/${OUTPUT_NAME}.mp4
+ffmpeg -framerate 30 -pattern_type glob -i "figs/movie/frame_*.png" -pix_fmt yuv420p ./figs/${OUTPUT_NAME}.mp4
+echo "Done! Saved as figs/${OUTPUT_NAME}.mp4"
 
-echo "Done! Saved as output/${OUTPUT_NAME}.mp4"
+
+echo "Creating plots of conserved quantities and packaging it into movie..."
+python3 ../py/ConservedQuantityPlotter.py
+ffmpeg -framerate 30 -pattern_type glob -i "figs/conservation_movie/frame_*.png" -pix_fmt yuv420p -vf "pad=ceil(iw/2)*2:ceil(ih/2)*2" figs/conservation_movie.mp4

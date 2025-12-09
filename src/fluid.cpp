@@ -151,7 +151,7 @@ void Fluid::runSimulation(double tFinal, double tOut){
             oss << std::setw(4) << std::setfill('0') << numOutputs; // "0000"
             std::string filenum = oss.str();
             // save
-            writer.save_npz_snapshot("snapshot_" + filenum + ".npz", density, vx, vy, pressure, Nx, Ny, totalMass, totalEnergy, totalMomentumX, totalMomentumY);
+            writer.save_npz_snapshot("snapshot_" + filenum + ".npz", density, vx, vy, pressure, Nx, Ny, t, totalMass, totalEnergy, totalMomentumX, totalMomentumY);
             
             numOutputs++;
         }
