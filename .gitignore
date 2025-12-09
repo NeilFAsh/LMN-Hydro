@@ -1,5 +1,6 @@
 # Build directory
 build/
+desul/
 .vscode/
 *.o
 *.obj
