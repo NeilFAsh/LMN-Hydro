@@ -8,6 +8,7 @@
 #include <time.h>
 
 #include "fluid_kokkos.hpp"
+#include "fluid.hpp"
 #include "SnapshotWriter.hpp"
 
 
@@ -26,17 +27,37 @@ void timeStepBenchmark(int Nx, int Ny, int useSlopeLimiter){
     fluid.useSlopeLimiter = useSlopeLimiter; // enable slope limiter
     fluid.initialize();
 
+    // retrieve view objects on device
+    auto vx = fluid.vx.view<Kokkos::DefaultExecutionSpace>();
+    auto vy = fluid.vy.view<Kokkos::DefaultExecutionSpace>();
+    auto density = fluid.density.view<Kokkos::DefaultExecutionSpace>();
+    auto pressure = fluid.pressure.view<Kokkos::DefaultExecutionSpace>();
+
     // set null conditions for benchmarking
     Kokkos::parallel_for("initialize_benchmark_conditions",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
         KOKKOS_LAMBDA (const int i, const int j) {
-            fluid.density(i,j) = 1.0;
-            fluid.pressure(i,j) = 2.5;
-            fluid.vx(i,j) = 0.5;
-            fluid.vy(i,j) = 0.0;
+            density(i,j) = 1.0;
+            pressure(i,j) = 2.5;
+            vx(i,j) = 0.5;
+            vy(i,j) = 0.0;
         }
     );
     Kokkos::fence();
+
+    // mark as modified on device
+    fluid.density.modify<Kokkos::DefaultExecutionSpace>();
+    fluid.vx.modify<Kokkos::DefaultExecutionSpace>();
+    fluid.vy.modify<Kokkos::DefaultExecutionSpace>();
+    fluid.pressure.modify<Kokkos::DefaultExecutionSpace>();
+
+    // synce device to host 
+    {
+        fluid.density.sync<Kokkos::DefaultExecutionSpace>();
+        fluid.vx.sync<Kokkos::DefaultExecutionSpace>();
+        fluid.vy.sync<Kokkos::DefaultExecutionSpace>();
+        fluid.pressure.sync<Kokkos::DefaultExecutionSpace>();
+    }
     
     // time execution for 10 timesteps
     clock_gettime(CLOCK_MONOTONIC, &start);

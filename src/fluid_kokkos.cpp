@@ -33,7 +33,6 @@ Fluid::Fluid(int Nx, int Ny, double boxSizeX, double boxSizeY){
     this->dy = boxSizeY / Ny;
     this->cellVol = dx * dy;
 
-    
     // allocate memory for the fluid properties
 
     Kmat vx("vx", this->Nx, this->Ny); this->vx = vx;
@@ -136,6 +135,11 @@ void Fluid::runSimulation(double tFinal, double tOut){
     this->tOut = tOut;
 
     int numOutputs = 0;
+    // Ensure device has up-to-date data before starting the time loop
+    this->density.sync<Kokkos::DefaultExecutionSpace>();
+    this->vx.sync<Kokkos::DefaultExecutionSpace>();
+    this->vy.sync<Kokkos::DefaultExecutionSpace>();
+    this->pressure.sync<Kokkos::DefaultExecutionSpace>();
     while (t < tFinal){
 
         if (t >= numOutputs * tOut){
@@ -179,6 +183,13 @@ void Fluid::runSimulation(double tFinal, double tOut){
                                         totalMass, totalEnergy, totalMomentumX, totalMomentumY);
             
             numOutputs++;
+
+            // After creating host-side snapshot, ensure device views are up-to-date
+            // before continuing with device kernels.
+            this->density.sync<Kokkos::DefaultExecutionSpace>();
+            this->vx.sync<Kokkos::DefaultExecutionSpace>();
+            this->vy.sync<Kokkos::DefaultExecutionSpace>();
+            this->pressure.sync<Kokkos::DefaultExecutionSpace>();
         }
 
         runTimeStep();
@@ -189,10 +200,14 @@ void Fluid::runTimeStep(){
 
     assert(this->_state == assembled || this->_state == initialized);
     this->_state = assembled;
-
+    //cout << "calculating dt" << endl;
     double dt = calculateTimeStep();
+    //cout << "dt = " << dt << endl;
+    //cout << "extrapolate to faces" << endl;
     extrapolateToFaces(dt);
+    //cout << "riemann solver" << endl;
     RiemannSolver();
+    //cout << "update states" << endl;
     updateStates(dt);
     //cout << "Finished timestep, current dt =  " << dt << endl;
     t += dt;
@@ -218,6 +233,12 @@ void Fluid::updateStates(double dt){
     auto flux_E_Y = this->flux_E_Y.view<Kokkos::DefaultExecutionSpace>();
 
     // update cell-centered states using computed fluxes
+
+    // Mark DualViews as modified on the device since we'll write to their device views.
+    this->density.modify<Kokkos::DefaultExecutionSpace>();
+    this->vx.modify<Kokkos::DefaultExecutionSpace>();
+    this->vy.modify<Kokkos::DefaultExecutionSpace>();
+    this->pressure.modify<Kokkos::DefaultExecutionSpace>();
 
     Kokkos::parallel_for("update_states",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
@@ -271,25 +292,55 @@ void Fluid::updateStates(double dt){
     );
 
     Kokkos::fence();
-
-    int throwException = 0;
+    // Compute minimum density and pressure on device to detect non-physical states.
+    double minDensity = 1e300;
+    double minPressure = 1e300;
     Kokkos::parallel_reduce("check_physical_states",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
-        KOKKOS_LAMBDA (const int i, const int j, int& local_throwException) {
-
-            if (density(i,j) <= 0.0) {
-                local_throwException = 1;
-            };
-            if (pressure(i,j) <= 0.0) {
-                local_throwException = 1;
-            };
-
-        }, Kokkos::Max<int>(throwException)
+        KOKKOS_LAMBDA (const int i, const int j, double& local_minDensity, double& local_minPressure) {
+            local_minDensity = fmin(local_minDensity, density(i,j));
+            local_minPressure = fmin(local_minPressure, pressure(i,j));
+        },
+        Kokkos::Min<double>(minDensity),
+        Kokkos::Min<double>(minPressure)
     );
+    // If the above fails just use serial implementation:
+    // for (int i = 0; i < Nx; i++){
+    //     for (int j = 0; j < Ny; j++){
+    //         if (density(i,j) <= 0.0) {
+    //             cout << "Found density with value " << density(i,j) << " at (" << i << ", " << j << ")\n";
+    //             throwException = 1;
+    //         };
+    //         if (pressure(i,j) <= 0.0) {
+    //             cout << "Found pressure with value " << pressure(i,j) << " at (" << i << ", " << j << ")\n";
+    //             throwException = 1;
+    //         };
+    //     }
+    // }
 
     Kokkos::fence();
     
-    if (throwException){
+    if (minDensity <= 0.0 || minPressure <= 0.0) {
+        // Sync to host and print offending cell values for debugging
+        this->density.sync<Kokkos::HostSpace>();
+        this->pressure.sync<Kokkos::HostSpace>();
+        auto density_h = this->density.view<Kokkos::HostSpace>();
+        auto pressure_h = this->pressure.view<Kokkos::HostSpace>();
+        bool found = false;
+        for (int ii = 0; ii < Nx && !found; ++ii){
+            for (int jj = 0; jj < Ny && !found; ++jj){
+                if (density_h(ii,jj) <= 0.0) {
+                    std::cerr << "Found density with value " << density_h(ii,jj) << " at (" << ii << ", " << jj << ")\n";
+                    found = true;
+                    break;
+                }
+                if (pressure_h(ii,jj) <= 0.0) {
+                    std::cerr << "Found pressure with value " << pressure_h(ii,jj) << " at (" << ii << ", " << jj << ")\n";
+                    found = true;
+                    break;
+                }
+            }
+        }
         throw runtime_error("Simulation encountered non-physical state (negative or zero density or pressure).");
     }
 };  
