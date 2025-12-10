@@ -21,51 +21,54 @@ Fluid::Fluid(int Nx, int Ny, double boxSizeX, double boxSizeY){
 
     assert(Kokkos::is_initialized());
 
+    // Set up grid params and send to device
+
     this->Nx = Nx; 
     this->Ny = Ny; 
 
     this->BoxSizeX = boxSizeX;
     this->BoxSizeY = boxSizeY;
 
-    this->dx = boxSizeX / Nx; 
-    this->dy = boxSizeY / Ny; 
+    this->dx = boxSizeX / Nx;
+    this->dy = boxSizeY / Ny;
     this->cellVol = dx * dy;
 
+    
     // allocate memory for the fluid properties
 
-    this->vx(this->Nx, this->Ny);
-    this->vy(this->Nx, this->Ny);
-    this->pressure(this->Nx, this->Ny);
-    this->density(this->Nx, this->Ny);
+    Kmat vx("vx", this->Nx, this->Ny); this->vx = vx;
+    Kmat vy("vy", this->Nx, this->Ny); this->vy = vy;
+    Kmat pressure("pressure", this->Nx, this->Ny); this->pressure = pressure;
+    Kmat density("density", this->Nx, this->Ny); this->density = density;
 
-    this->rho_XL(this->Nx, this->Ny);
-    this->rho_XR(this->Nx, this->Ny);
-    this->rho_YB(this->Nx, this->Ny);
-    this->rho_YT(this->Nx, this->Ny);
+    Kmat rho_XL("rho_XL", this->Nx, this->Ny); this->rho_XL = rho_XL;
+    Kmat rho_XR("rho_XR", this->Nx, this->Ny); this->rho_XR = rho_XR;
+    Kmat rho_YB("rho_YB", this->Nx, this->Ny); this->rho_YB = rho_YB;
+    Kmat rho_YT("rho_YT", this->Nx, this->Ny); this->rho_YT = rho_YT;
 
-    this->vx_XL(this->Nx, this->Ny);
-    this->vx_XR(this->Nx, this->Ny);
-    this->vx_YB(this->Nx, this->Ny);
-    this->vx_YT(this->Nx, this->Ny);
+    Kmat vx_XL("vx_XL", this->Nx, this->Ny); this->vx_XL = vx_XL;
+    Kmat vx_XR("vx_XR", this->Nx, this->Ny); this->vx_XR = vx_XR;
+    Kmat vx_YB("vx_YB", this->Nx, this->Ny); this->vx_YB = vx_YB;
+    Kmat vx_YT("vx_TY", this->Nx, this->Ny); this->vx_YT = vx_YT;
 
-    this->vy_XL(this->Nx, this->Ny);
-    this->vy_XR(this->Nx, this->Ny);
-    this->vy_YB(this->Nx, this->Ny);
-    this->vy_YT(this->Nx, this->Ny);
-
-    this->P_XL(this->Nx, this->Ny);
-    this->P_XR(this->Nx, this->Ny);
-    this->P_YB(this->Nx, this->Ny);
-    this->P_YT(this->Nx, this->Ny);
-
-    this->flux_rho_X(this->Nx, this->Ny);
-    this->flux_rho_Y(this->Nx, this->Ny);
-    this->flux_momx_X(this->Nx, this->Ny);
-    this->flux_momx_Y(this->Nx, this->Ny);
-    this->flux_momy_X(this->Nx, this->Ny);
-    this->flux_momy_Y(this->Nx, this->Ny);
-    this->flux_E_X(this->Nx, this->Ny);
-    this->flux_E_Y(this->Nx, this->Ny);
+    Kmat vy_XL("vy_XL", this->Nx, this->Ny); this->vy_XL = vy_XL;
+    Kmat vy_XR("vy_XR", this->Nx, this->Ny); this->vy_XR = vy_XR;
+    Kmat vy_YB("vy_YB", this->Nx, this->Ny); this->vy_YB = vy_YB;
+    Kmat vy_YT("vy_YT", this->Nx, this->Ny); this->vy_YT = vy_YT;
+    
+    Kmat P_XL("P_XL", this->Nx, this->Ny); this->P_XL = P_XL;
+    Kmat P_XR("P_XR", this->Nx, this->Ny); this->P_XR = P_XR;
+    Kmat P_YB("P_YB", this->Nx, this->Ny); this->P_YB = P_YB;
+    Kmat P_YT("P_YT", this->Nx, this->Ny); this->P_YT = P_YT;
+    
+    Kmat flux_rho_X("flux_rho_X", this->Nx, this->Ny); this->flux_rho_X = flux_rho_X;
+    Kmat flux_rho_Y("flux_rho_Y", this->Nx, this->Ny); this->flux_rho_Y = flux_rho_Y;
+    Kmat flux_momx_X("flux_momx_X", this->Nx, this->Ny); this->flux_momx_X = flux_momx_X;
+    Kmat flux_momx_Y("flux_momx_Y", this->Nx, this->Ny); this->flux_momx_Y = flux_momx_Y;
+    Kmat flux_momy_X("flux_momy_X", this->Nx, this->Ny); this->flux_momy_X = flux_momy_X;
+    Kmat flux_momy_Y("flux_momy_Y", this->Nx, this->Ny); this->flux_momy_Y = flux_momy_Y;
+    Kmat flux_E_X("flux_E_X", this->Nx, this->Ny); this->flux_E_X = flux_E_X;
+    Kmat flux_E_Y("flux_E_Y", this->Nx, this->Ny); this->flux_E_Y = flux_E_Y;
     
     this->_state = allocated;
 };
@@ -90,6 +93,12 @@ void Fluid::printState(int step){
     totalMass = 0.0;
     totalMomentumX = 0.0;
     totalMomentumY = 0.0;
+
+    // retrieve view objects on device
+    auto vx = this->vx.view<Kokkos::DefaultExecutionSpace>();
+    auto vy = this->vy.view<Kokkos::DefaultExecutionSpace>();
+    auto pressure = this->pressure.view<Kokkos::DefaultExecutionSpace>();
+    auto density = this->density.view<Kokkos::DefaultExecutionSpace>();
 
     Kokkos::parallel_reduce("compute_totals",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
@@ -139,39 +148,40 @@ void Fluid::runSimulation(double tFinal, double tOut){
             vec_vx = vector<vector<double>>(this->Nx, vector<double>(this->Ny, 0.0));
             vec_vy = vector<vector<double>>(this->Nx, vector<double>(this->Ny, 0.0));
             vec_P = vector<vector<double>>(this->Nx, vector<double>(this->Ny, 0.0));
+
+            // sync and retrive host view
+            this->density.sync<Kokkos::HostSpace>();
+            this->vx.sync<Kokkos::HostSpace>();
+            this->vy.sync<Kokkos::HostSpace>();
+            this->pressure.sync<Kokkos::HostSpace>();
+
+            auto density = this->density.view<Kokkos::HostSpace>();
+            auto vx = this->vx.view<Kokkos::HostSpace>();
+            auto vy = this->vy.view<Kokkos::HostSpace>();
+            auto pressure = this->pressure.view<Kokkos::HostSpace>();
             
-            Kokkos::fence();
-            Kokkos::parallel_for("copy_to_host",
-                Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
-                KOKKOS_LAMBDA (const int i, const int j) {
-                    vec_rho[i][j] = density.d_view(i,j);
-                    vec_vx[i][j] = vx.d_view(i,j);
-                    vec_vy[i][j] = vy.d_view(i,j);
-                    vec_P[i][j] = pressure.d_view(i,j);
+            for (int i = 0; i < Nx; i++){
+                for (int j = 0; j < Ny; j++){
+                    vec_rho[i][j] = density(i,j);
+                    vec_vx[i][j] = vx(i,j);
+                    vec_vy[i][j] = vy(i,j);
+                    vec_P[i][j] = pressure(i,j);
                 }
-            );
+            }
             
             // Format filename with leading zeros
             std::ostringstream oss;
             oss << std::setw(4) << std::setfill('0') << numOutputs; // "0000"
             std::string filenum = oss.str();
             // save
-            writer.save_npz_snapshot("snapshot_" + filenum + ".npz", vec_rho, vec_vx, vec_vy, vec_P, Nx, Ny, totalMass, totalEnergy, totalMomentumX, totalMomentumY);
+            writer.save_npz_snapshot("snapshot_" + filenum + ".npz", 
+                                        vec_rho, vec_vx, vec_vy, vec_P, Nx, Ny,
+                                        totalMass, totalEnergy, totalMomentumX, totalMomentumY);
             
             numOutputs++;
         }
 
         runTimeStep();
-
-        // double minP = 1e10;
-        // double maxP = 0.0;
-        // for (int i = 0; i < Nx; i++){
-        //     for (int j = 0; j < Ny; j++){
-        //         minP = min(minP, pressure[i][j]);
-        //         maxP = max(maxP, pressure[i][j]);
-        //     }
-        // }
-        //cout << "Min/ max pressure after timestep: " << minP << "  " << maxP << endl;
     }
 };
         
@@ -191,6 +201,21 @@ void Fluid::runTimeStep(){
 void Fluid::updateStates(double dt){
 
     assert(this->_state == assembled);
+
+    // retrieve view objects on device
+    auto density = this->density.view<Kokkos::DefaultExecutionSpace>();
+    auto vx = this->vx.view<Kokkos::DefaultExecutionSpace>();
+    auto vy = this->vy.view<Kokkos::DefaultExecutionSpace>();
+    auto pressure = this->pressure.view<Kokkos::DefaultExecutionSpace>();
+
+    auto flux_rho_X = this->flux_rho_X.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_rho_Y = this->flux_rho_Y.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_momx_X = this->flux_momx_X.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_momx_Y = this->flux_momx_Y.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_momy_X = this->flux_momy_X.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_momy_Y = this->flux_momy_Y.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_E_X = this->flux_E_X.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_E_Y = this->flux_E_Y.view<Kokkos::DefaultExecutionSpace>();
 
     // update cell-centered states using computed fluxes
 
@@ -273,6 +298,36 @@ void Fluid::RiemannSolver() {
 
     assert(this->_state == assembled);
 
+    // retrieve view objects on device
+    auto rho_XL = this->rho_XL.view<Kokkos::DefaultExecutionSpace>();
+    auto rho_XR = this->rho_XR.view<Kokkos::DefaultExecutionSpace>();
+    auto rho_YB = this->rho_YB.view<Kokkos::DefaultExecutionSpace>();
+    auto rho_YT = this->rho_YT.view<Kokkos::DefaultExecutionSpace>();
+
+    auto vx_XL = this->vx_XL.view<Kokkos::DefaultExecutionSpace>();
+    auto vx_XR = this->vx_XR.view<Kokkos::DefaultExecutionSpace>();
+    auto vx_YB = this->vx_YB.view<Kokkos::DefaultExecutionSpace>();
+    auto vx_YT = this->vx_YT.view<Kokkos::DefaultExecutionSpace>();
+
+    auto vy_XL = this->vy_XL.view<Kokkos::DefaultExecutionSpace>();
+    auto vy_XR = this->vy_XR.view<Kokkos::DefaultExecutionSpace>();
+    auto vy_YB = this->vy_YB.view<Kokkos::DefaultExecutionSpace>();
+    auto vy_YT = this->vy_YT.view<Kokkos::DefaultExecutionSpace>();
+
+    auto P_XL = this->P_XL.view<Kokkos::DefaultExecutionSpace>();
+    auto P_XR = this->P_XR.view<Kokkos::DefaultExecutionSpace>();
+    auto P_YB = this->P_YB.view<Kokkos::DefaultExecutionSpace>();
+    auto P_YT = this->P_YT.view<Kokkos::DefaultExecutionSpace>();
+
+    auto flux_rho_X = this->flux_rho_X.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_rho_Y = this->flux_rho_Y.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_momx_X = this->flux_momx_X.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_momx_Y = this->flux_momx_Y.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_momy_X = this->flux_momy_X.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_momy_Y = this->flux_momy_Y.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_E_X = this->flux_E_X.view<Kokkos::DefaultExecutionSpace>();
+    auto flux_E_Y = this->flux_E_Y.view<Kokkos::DefaultExecutionSpace>();
+
     // Solve Riemann problems at each right/top face of cell (i,j).
     // We'll assemble conserved left and right states from the face-extrapolated primitives
     // and apply the Rusanov flux formula.
@@ -332,10 +387,10 @@ void Fluid::RiemannSolver() {
                 double smax = std::max(fabs(uL) + cL, fabs(uR) + cR);
 
                 // Rusanov flux: 0.5*(F_L + F_R) - 0.5 * smax * (U_R - U_L)
-                this->flux_rho_X(i,j) = 0.5 * (FL_rho + FR_rho) - 0.5 * smax * (UR_rho - UL_rho);
-                this->flux_momx_X(i,j) = 0.5 * (FL_mx + FR_mx) - 0.5 * smax * (UR_mx - UL_mx);
-                this->flux_momy_X(i,j) = 0.5 * (FL_my + FR_my) - 0.5 * smax * (UR_my - UL_my);
-                this->flux_E_X(i,j)    = 0.5 * (FL_E + FR_E) - 0.5 * smax * (UR_E - UL_E);
+                flux_rho_X(i,j) = 0.5 * (FL_rho + FR_rho) - 0.5 * smax * (UR_rho - UL_rho);
+                flux_momx_X(i,j) = 0.5 * (FL_mx + FR_mx) - 0.5 * smax * (UR_mx - UL_mx);
+                flux_momy_X(i,j) = 0.5 * (FL_my + FR_my) - 0.5 * smax * (UR_my - UL_my);
+                flux_E_X(i,j)    = 0.5 * (FL_E + FR_E) - 0.5 * smax * (UR_E - UL_E);
             }
 
             //
@@ -387,10 +442,10 @@ void Fluid::RiemannSolver() {
                 double smax = std::max(fabs(vL) + cL, fabs(vR) + cR);
 
                 // Rusanov flux in y-direction
-                this->flux_rho_Y(i,j)  = 0.5 * (GL_rho + GR_rho) - 0.5 * smax * (UR_rho - UL_rho);
-                this->flux_momx_Y(i,j) = 0.5 * (GL_mx + GR_mx)   - 0.5 * smax * (UR_mx  - UL_mx);
-                this->flux_momy_Y(i,j) = 0.5 * (GL_my + GR_my)   - 0.5 * smax * (UR_my  - UL_my);
-                this->flux_E_Y(i,j)    = 0.5 * (GL_E + GR_E)     - 0.5 * smax * (UR_E   - UL_E);
+                flux_rho_Y(i,j)  = 0.5 * (GL_rho + GR_rho) - 0.5 * smax * (UR_rho - UL_rho);
+                flux_momx_Y(i,j) = 0.5 * (GL_mx + GR_mx)   - 0.5 * smax * (UR_mx  - UL_mx);
+                flux_momy_Y(i,j) = 0.5 * (GL_my + GR_my)   - 0.5 * smax * (UR_my  - UL_my);
+                flux_E_Y(i,j)    = 0.5 * (GL_E + GR_E)     - 0.5 * smax * (UR_E   - UL_E);
             }
         }
     );
@@ -400,6 +455,32 @@ void Fluid::RiemannSolver() {
 void Fluid::extrapolateToFaces(double dt){
 
     assert(this->_state == assembled);
+
+    // retrieve view objects on device
+    auto vx = this->vx.view<Kokkos::DefaultExecutionSpace>();
+    auto vy = this->vy.view<Kokkos::DefaultExecutionSpace>();
+    auto pressure = this->pressure.view<Kokkos::DefaultExecutionSpace>();
+    auto density = this->density.view<Kokkos::DefaultExecutionSpace>();
+
+    auto rho_XL = this->rho_XL.view<Kokkos::DefaultExecutionSpace>();
+    auto rho_XR = this->rho_XR.view<Kokkos::DefaultExecutionSpace>();
+    auto rho_YB = this->rho_YB.view<Kokkos::DefaultExecutionSpace>();
+    auto rho_YT = this->rho_YT.view<Kokkos::DefaultExecutionSpace>();
+
+    auto vx_XL = this->vx_XL.view<Kokkos::DefaultExecutionSpace>();
+    auto vx_XR = this->vx_XR.view<Kokkos::DefaultExecutionSpace>();
+    auto vx_YB = this->vx_YB.view<Kokkos::DefaultExecutionSpace>();
+    auto vx_YT = this->vx_YT.view<Kokkos::DefaultExecutionSpace>();
+
+    auto vy_XL = this->vy_XL.view<Kokkos::DefaultExecutionSpace>();
+    auto vy_XR = this->vy_XR.view<Kokkos::DefaultExecutionSpace>();
+    auto vy_YB = this->vy_YB.view<Kokkos::DefaultExecutionSpace>();
+    auto vy_YT = this->vy_YT.view<Kokkos::DefaultExecutionSpace>();
+
+    auto P_XL = this->P_XL.view<Kokkos::DefaultExecutionSpace>();
+    auto P_XR = this->P_XR.view<Kokkos::DefaultExecutionSpace>();
+    auto P_YB = this->P_YB.view<Kokkos::DefaultExecutionSpace>();
+    auto P_YT = this->P_YT.view<Kokkos::DefaultExecutionSpace>();
 
     // extrapolate cell-centered values to faces
     Kokkos::parallel_for("extrapolate_to_faces",
@@ -450,26 +531,26 @@ void Fluid::extrapolateToFaces(double dt){
 
             // Store the extrapolated values at faces
             // Will later use to calculate fluxes via Riemann solver
-            this->rho_XL(i,j) = rho_prime - gradX_Density * dx / 2.0;
-            this->rho_XR(i,j) = rho_prime + gradX_Density * dx / 2.0;
+            rho_XL(i,j) = rho_prime - gradX_Density * dx / 2.0;
+            rho_XR(i,j) = rho_prime + gradX_Density * dx / 2.0;
 
-            this->rho_YB(i,j) = rho_prime - gradY_Density * dy / 2.0;
-            this->rho_YT(i,j) = rho_prime + gradY_Density * dy / 2.0;
+            rho_YB(i,j) = rho_prime - gradY_Density * dy / 2.0;
+            rho_YT(i,j) = rho_prime + gradY_Density * dy / 2.0;
 
-            this->vx_XL(i,j) = vx_prime - gradX_Vx * dx / 2.0;
-            this->vx_XR(i,j) = vx_prime + gradX_Vx * dx / 2.0;
-            this->vx_YB(i,j) = vx_prime - gradY_Vx * dy / 2.0;
-            this->vx_YT(i,j) = vx_prime + gradY_Vx * dy / 2.0; 
+            vx_XL(i,j) = vx_prime - gradX_Vx * dx / 2.0;
+            vx_XR(i,j) = vx_prime + gradX_Vx * dx / 2.0;
+            vx_YB(i,j) = vx_prime - gradY_Vx * dy / 2.0;
+            vx_YT(i,j) = vx_prime + gradY_Vx * dy / 2.0; 
 
-            this->vy_XL(i,j) = vy_prime - gradX_Vy * dx / 2.0;
-            this->vy_XR(i,j) = vy_prime + gradX_Vy * dx / 2.0;
-            this->vy_YB(i,j) = vy_prime - gradY_Vy * dy / 2.0;
-            this->vy_YT(i,j) = vy_prime + gradY_Vy * dy / 2.0;
+            vy_XL(i,j) = vy_prime - gradX_Vy * dx / 2.0;
+            vy_XR(i,j) = vy_prime + gradX_Vy * dx / 2.0;
+            vy_YB(i,j) = vy_prime - gradY_Vy * dy / 2.0;
+            vy_YT(i,j) = vy_prime + gradY_Vy * dy / 2.0;
 
-            this->P_XL(i,j) = pressure_prime - gradX_Pressure * dx / 2.0;
-            this->P_XR(i,j) = pressure_prime + gradX_Pressure * dx / 2.0;
-            this->P_YB(i,j) = pressure_prime - gradY_Pressure * dy / 2.0;
-            this->P_YT(i,j) = pressure_prime + gradY_Pressure * dy / 2.0;
+            P_XL(i,j) = pressure_prime - gradX_Pressure * dx / 2.0;
+            P_XR(i,j) = pressure_prime + gradX_Pressure * dx / 2.0;
+            P_YB(i,j) = pressure_prime - gradY_Pressure * dy / 2.0;
+            P_YT(i,j) = pressure_prime + gradY_Pressure * dy / 2.0;
         }
     );
 
@@ -482,6 +563,12 @@ double Fluid::calculateTimeStep(){
     double maxV = 0.0;
 
     assert(this->_state == assembled);
+
+    // retrieve view objects on device
+    auto vx = this->vx.view<Kokkos::DefaultExecutionSpace>();
+    auto vy = this->vy.view<Kokkos::DefaultExecutionSpace>();   
+    auto pressure = this->pressure.view<Kokkos::DefaultExecutionSpace>();
+    auto density = this->density.view<Kokkos::DefaultExecutionSpace>();
 
     Kokkos::parallel_reduce("compute_dt_params",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
@@ -512,11 +599,10 @@ double Fluid::calculateTimeStep(){
     return dt;
 };
 
-void Fluid::slopeLimiter(double &gradx, double &grady, Kmat field,
+void Fluid::slopeLimiter(double &gradx, double &grady, const Kokkos::View<double**, Kokkos::LayoutRight> field,
                     int i, int j, int Ri, int Li, int Ti, int Bi){
 
     double floor_x, floor_y;
-
     assert(this->_state == assembled);
 
     if (gradx == 0.0){

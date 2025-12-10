@@ -41,6 +41,19 @@ void Fluid_KHI::initialize_KHI(){
     // Initialize a Kelvin-Helmholtz Instability setup
     initialize();
 
+    // Retrieve view objects on the device
+    auto vx = this->vx.view<Kokkos::DefaultExecutionSpace>();
+    auto vy = this->vy.view<Kokkos::DefaultExecutionSpace>();
+    auto density = this->density.view<Kokkos::DefaultExecutionSpace>();
+    auto pressure = this->pressure.view<Kokkos::DefaultExecutionSpace>();
+
+    // Mark the device as modified
+    this->vx.modify<Kokkos::DefaultExecutionSpace>();
+    this->vy.modify<Kokkos::DefaultExecutionSpace>();
+    this->density.modify<Kokkos::DefaultExecutionSpace>();
+    this->pressure.modify<Kokkos::DefaultExecutionSpace>();
+
+    // set up initial conditions on the device
     Kokkos::parallel_for("initialize_KHI",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
         KOKKOS_LAMBDA (const int i, const int j) {
@@ -61,6 +74,12 @@ void Fluid_KHI::initialize_KHI(){
         }
     );
     Kokkos::fence();
+
+    // sync changes back to host
+    this->vx.sync<Kokkos::HostSpace>();
+    this->vy.sync<Kokkos::HostSpace>();
+    this->density.sync<Kokkos::HostSpace>();
+    this->pressure.sync<Kokkos::HostSpace>();
 };
 
 int main(){

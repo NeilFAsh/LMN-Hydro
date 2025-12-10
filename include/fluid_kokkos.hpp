@@ -5,14 +5,17 @@
 #include <algorithm>
 #include <cassert>
 #include <Kokkos_Core.hpp>
+#include <Kokkos_DualView.hpp>
 
 using namespace std;
 
 namespace fluid_kokkos {
 
     enum fluidState {undefined, allocated, initialized, assembled};
+    //enum device {Kokkos::Cuda, Kokkos::OpenMP, Kokkos::Serial};
 
-    typedef Kokkos::DualView<double**> Kmat;
+    using Kmat = Kokkos::DualView<double**,Kokkos::LayoutRight>;
+    using Kdouble = Kokkos::DualView<double>;
 
 
 class Fluid {
@@ -28,15 +31,15 @@ class Fluid {
         double totalMass;
         double totalMomentumX;
         double totalMomentumY;
-        float t;
-        float tFinal;
-        float tOut;
+        double t;
+        double tFinal;
+        double tOut;
         int useSlopeLimiter = 0;
         // fluid params
-        float courant_fac = 0.4;
-        float w0 = 0.1;
-        float sigma = 0.05/sqrt(2.);
-        float gamma = 5./3.;
+        double courant_fac = 0.4;
+        double w0 = 0.1;
+        double sigma = 0.05/sqrt(2.);
+        double gamma = 5./3.;
         int Nx;
         int Ny;
         double BoxSizeX;
@@ -73,7 +76,7 @@ class Fluid {
         void extrapolateToFaces(double dt);
         void updateStates(double dt);
         void RiemannSolver();
-        void slopeLimiter(double &gradx, double &grady, Kmat field,
+        void slopeLimiter(double &gradx, double &grady, const Kokkos::View<double**, Kokkos::LayoutRight> field,
                             int i, int j, int Ri, int Li, int Ti, int Bi);
         void printState(int step);
 };

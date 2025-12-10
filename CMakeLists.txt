@@ -4,9 +4,9 @@ project(KHI_Solver)
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_COMPILER /sw/pkgs/arc/gcc/13.2.0/bin/g++)
 
-#set(Kokkos_DIR "/home/nfash/NERS570/Lab12/kokkos/build/")
-#set(DKokkos_COMPILE_LAUNCHER "/home/nfash/NERS570/Lab12/kokkos/bin/")
-#set(DKokkos_COMPILE_LAUNCHER "/home/nfash/NERS570/Lab12/kokkos/build/temp/")
+set(DKokkos_ENABLE_CUDA ON)
+set(DKokkos_ENABLE_OPENMP ON)
+set(DKokkos_ENABLE_SERIAL ON)
 
 #find_package(Kokkos REQUIRED)
 
