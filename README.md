@@ -1,2 +1,14 @@
 # LMN-Hydro
-A simple 2D Hydro code for NERS570
+
+LMN-Hydro is a simple but extensible 2D hydrodynamics simulation code written in C++. It is designed for simulating fluid dynamics problems in astrophysics and engineering applications.
+
+## How to install
+
+CMake is our primary build system. To install LMN-Hydro, follow these steps:
+
+    mkdir build
+    cd build
+    cmake ..
+    make -j
+
+  
