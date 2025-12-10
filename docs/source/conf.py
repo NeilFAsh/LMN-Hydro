@@ -35,6 +35,7 @@ release = '0.0.1'
 extensions = [
     # 'breathe',             # connects Sphinx with Doxygen
     'sphinx.ext.autodoc',
+    # 'sphinx_rtd_theme',
     # 'sphinx.ext.napoleon',
     # 'sphinx.ext.mathjax',
 ]

@@ -6,10 +6,7 @@
 LMN-Hydro documentation
 =======================
 
-Add your content using ``reStructuredText`` syntax. See the
-`reStructuredText <https://www.sphinx-doc.org/en/master/usage/restructuredtext/index.html>`_
-documentation for details.
-
+LMN-Hydro is a simple but extensible hydrodynamics simulation code written in C++. It is designed for simulating fluid dynamics problems in astrophysics and engineering applications.
 
 .. toctree::
    :maxdepth: 2
@@ -17,6 +14,7 @@ documentation for details.
 
    installation
    tutorials/KHI
+   theory/fluid_class
    outputs/singlesnapshot
    outputs/movies
 

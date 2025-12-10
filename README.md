@@ -11,4 +11,6 @@ CMake is our primary build system. To install LMN-Hydro, follow these steps:
     cmake ..
     make -j
 
-  
+## Documentation
+
+Find more details on how to use our package here: https://lmn-hydro.readthedocs.io/en/latest/  
