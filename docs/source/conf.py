@@ -35,7 +35,7 @@ release = '0.0.1'
 extensions = [
     # 'breathe',             # connects Sphinx with Doxygen
     'sphinx.ext.autodoc',
-    'sphinx_rtd_theme',
+    # 'sphinx_rtd_theme',
     # 'sphinx.ext.napoleon',
     # 'sphinx.ext.mathjax',
 ]
@@ -54,5 +54,5 @@ exclude_patterns = []
 # -- Options for HTML output -------------------------------------------------
 # https://www.sphinx-doc.org/en/master/usage/configuration.html#options-for-html-output
 
-html_theme = 'sphinx_rtd_theme'
+html_theme = 'alabaster'
 html_static_path = ['_static']
