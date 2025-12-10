@@ -1,22 +1,27 @@
-cmake_minimum_required(VERSION 3.10)
-project(KHI_Solver)
+# Mark miniz.c as pure C
+set_source_files_properties(miniz.c PROPERTIES LANGUAGE C)
 
-set(CMAKE_CXX_STANDARD 17)
-
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
-add_executable(khi
-    src/Simple_KHI.cpp
-    src/SnapshotWriter.cpp
+# Source files for the hydro library
+set(LMN_HYDRO_SOURCES
+    fluid.cpp
+    SnapshotWriter.cpp
+    miniz.c
 )
 
-# Might need to fetch miniz in the future, but for now we include it directly in the source tree.
-#  include(FetchContent)
+# Build static library containing hydro solver
+add_library(lmnhydro STATIC ${LMN_HYDRO_SOURCES})
 
-# FetchContent_Declare(
-#     miniz
-#     GIT_REPOSITORY https://github.com/richgel999/miniz
-#     GIT_TAG master
-# )
+# Ensure miniz uses its internal API names (no zlib-compat layer)
+target_compile_definitions(lmnhydro PRIVATE
+    MINIZ_NO_ZLIB_COMPATIBLE_NAMES
+)
 
-# FetchContent_MakeAvailable(miniz)
+# Include headers for library consumers
+target_include_directories(lmnhydro PUBLIC
+    ${PROJECT_SOURCE_DIR}/include
+)
+
+# For older GCC (< 9)
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    target_link_libraries(lmnhydro stdc++fs)
+endif()

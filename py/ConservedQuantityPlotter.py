@@ -3,13 +3,12 @@ import matplotlib.pyplot as plt
 import os
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 import sys
-import glob
 
 # Create directories for images to go, if not already made
 fig_dir = "./figs/" 
 os.makedirs(fig_dir, exist_ok=True)
 
-movie_dir = fig_dir+"conservation_movie/"
+movie_dir = fig_dir+"Movies/"
 os.makedirs(movie_dir, exist_ok=True)
 
 snap_dir = "./output/"

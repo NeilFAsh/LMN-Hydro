@@ -1,0 +1,2 @@
+add_executable(fluid_KHI fluid_KHI.cpp)
+target_link_libraries(fluid_KHI PRIVATE lmnhydro)
