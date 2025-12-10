@@ -6,3 +6,4 @@ build/
 *.exe
 *.out
 *.log
+!/docs/build/
