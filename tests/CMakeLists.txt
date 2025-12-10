@@ -1,0 +1,2 @@
+add_executable(test_timestep timestep_benchmark.cpp)
+target_link_libraries(test_timestep PRIVATE lmnhydro)
