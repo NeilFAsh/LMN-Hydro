@@ -4,6 +4,8 @@ Installation
 `CMake <https://cmake.org>`_ is our primary build system. To install LMN-Hydro, follow these steps:
 
 .. code-block:: bash
+
+     #!/bin/bash
     mkdir build
     cd build
     cmake ..
