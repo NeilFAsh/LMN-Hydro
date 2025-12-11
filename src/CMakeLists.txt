@@ -15,6 +15,7 @@ add_library(lmnhydro STATIC ${LMN_HYDRO_SOURCES})
 target_compile_definitions(lmnhydro PRIVATE
     MINIZ_NO_ZLIB_COMPATIBLE_NAMES
 )
+target_link_libraries(fluid_khi_kokkos Kokkos::kokkos)
 
 # Include headers for library consumers
 target_include_directories(lmnhydro PUBLIC

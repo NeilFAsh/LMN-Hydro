@@ -107,6 +107,13 @@ void Fluid::initialize(){
     this->_state = initialized;
 
 };
+
+void Fluid::assemble(){
+
+    assert(this->_state == assembled || this->_state == initialized);
+    this->_state = assembled;
+
+}
         
 void Fluid::printState(int step){
 

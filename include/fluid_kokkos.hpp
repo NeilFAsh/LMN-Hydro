@@ -1,15 +1,21 @@
-#ifndef FLUID_HPP
-#define FLUID_HPP
+#ifndef FLUID_KOKKOS_HPP
+#define FLUID_KOKKOS_HPP
 #include <vector>
 #include <cmath>
 #include <algorithm>
 #include <cassert>
+#include <Kokkos_Core.hpp>
+#include <Kokkos_DualView.hpp>
 
 using namespace std;
 
-namespace fluid {
+namespace fluid_kokkos {
 
     enum fluidState {undefined, allocated, initialized, assembled};
+    //enum device {Kokkos::Cuda, Kokkos::OpenMP, Kokkos::Serial};
+
+    using Kmat = Kokkos::DualView<double**>;
+    using Kdouble = Kokkos::DualView<double>;
 
 
 class Fluid {
@@ -17,23 +23,23 @@ class Fluid {
         fluidState _state = undefined;
 
     public: 
-        vector<vector<double>> vx;
-        vector<vector<double>> vy;
-        vector<vector<double>> pressure;
-        vector<vector<double>> density;
+        Kmat vx;
+        Kmat vy;
+        Kmat pressure;
+        Kmat density;
         double totalEnergy;
         double totalMass;
         double totalMomentumX;
         double totalMomentumY;
-        float t;
-        float tFinal;
-        float tOut;
+        double t;
+        double tFinal;
+        double tOut;
         int useSlopeLimiter = 0;
         // fluid params
-        float courant_fac = 0.4;
-        float w0 = 0.1;
-        float sigma = 0.05/sqrt(2.);
-        float gamma = 5./3.;
+        double courant_fac = 0.4;
+        double w0 = 0.1;
+        double sigma = 0.05/sqrt(2.);
+        double gamma = 5./3.;
         int Nx;
         int Ny;
         double BoxSizeX;
@@ -45,17 +51,17 @@ class Fluid {
         
         double cellVol;
 
-        vector<vector<double>> isNotBoundary;
+        Kmat isNotBoundary;
 
-        vector<vector<double>>  rho_XL, rho_XR, rho_YB, rho_YT;
-        vector<vector<double>>  vx_XL, vx_XR, vx_YB, vx_YT;
-        vector<vector<double>>  vy_XL, vy_XR, vy_YB, vy_YT;
-        vector<vector<double>>  P_XL, P_XR, P_YB, P_YT;
+        Kmat  rho_XL, rho_XR, rho_YB, rho_YT;
+        Kmat  vx_XL, vx_XR, vx_YB, vx_YT;
+        Kmat  vy_XL, vy_XR, vy_YB, vy_YT;
+        Kmat  P_XL, P_XR, P_YB, P_YT;
 
-        vector<vector<double>> flux_rho_X, flux_rho_Y;
-        vector<vector<double>> flux_momx_X, flux_momx_Y;
-        vector<vector<double>> flux_momy_X, flux_momy_Y;
-        vector<vector<double>> flux_E_X, flux_E_Y;
+        Kmat flux_rho_X, flux_rho_Y;
+        Kmat flux_momx_X, flux_momx_Y;
+        Kmat flux_momy_X, flux_momy_Y;
+        Kmat flux_E_X, flux_E_Y;
     
     // function declarations
     public:
@@ -66,10 +72,11 @@ class Fluid {
         void runSimulation(double tFinal, double tOut);
         void runTimeStep();
         double calculateTimeStep();
+
         void extrapolateToFaces(double dt);
         void updateStates(double dt);
         void RiemannSolver();
-        void slopeLimiter(double &gradx, double &grady, vector<vector<double>> field,
+        void slopeLimiter(double &gradx, double &grady, const Kokkos::View<double**> field,
                             int i, int j, int Ri, int Li, int Ti, int Bi);
         void printState(int step);
 };
