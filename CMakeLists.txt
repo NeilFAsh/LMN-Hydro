@@ -1,7 +1,7 @@
 cmake_minimum_required(VERSION 3.10)
 project(KHI_Solver)
 
-set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_COMPILER /sw/pkgs/arc/gcc/13.2.0/bin/g++)
 
 set(Kokkos_ENABLE_CUDA ON)
@@ -11,11 +11,12 @@ set(Kokkos_ARCH_SKX ON)
 set(Kokkos_ARCH_VOLTA70 ON)
 
 #find_package(Kokkos REQUIRED)
-
+add_compile_options(-Wno-deprecated-gpu-targets)
 include(FetchContent)
 FetchContent_Declare(
   Kokkos
-  URL https://github.com/kokkos/kokkos/archive/refs/tags/4.7.01.zip #alt 4.7.01, 5.0.0
+  DOWNLOAD_EXTRACT_TIMESTAMP TRUE
+  URL https://github.com/kokkos/kokkos/archive/refs/tags/5.0.0.zip #alt 4.7.01, 5.0.0
 )
 FetchContent_MakeAvailable(Kokkos)
 
@@ -44,7 +45,7 @@ target_sources(fluid_khi
 )
 
 add_executable(fluid_khi_kokkos)
-target_link_options(fluid_khi_kokkos PRIVATE -lstdc++fs)
+target_link_options(fluid_khi_kokkos PRIVATE -lstdc++fs -Wno-deprecated-gpu-targets)
 target_compile_options(fluid_khi_kokkos PRIVATE -O3 -march=native)
 target_sources(fluid_khi_kokkos
     PRIVATE 
@@ -85,7 +86,7 @@ target_sources(timestep_benchmark
 )
 
 add_executable(timestep_benchmark_kokkos)
-target_link_options(timestep_benchmark_kokkos PRIVATE -lstdc++fs)
+target_link_options(timestep_benchmark_kokkos PRIVATE -lstdc++fs -Wno-deprecated-gpu-targets)
 target_compile_options(timestep_benchmark_kokkos PRIVATE -O3 -march=native)
 target_sources(timestep_benchmark_kokkos
     PRIVATE 
@@ -126,7 +127,7 @@ target_sources(component_benchmark
 )
 
 add_executable(component_benchmark_kokkos)
-target_link_options(component_benchmark_kokkos PRIVATE -lstdc++fs)
+target_link_options(component_benchmark_kokkos PRIVATE -lstdc++fs -Wno-deprecated-gpu-targets)
 target_compile_options(component_benchmark_kokkos PRIVATE -O3 -march=native)
 target_sources(component_benchmark_kokkos
     PRIVATE 

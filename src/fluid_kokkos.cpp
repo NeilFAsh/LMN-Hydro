@@ -413,9 +413,7 @@ void Fluid::RiemannSolver() {
     
             // neighbor indices (periodic)
             const int Ri = (i + 1) % Nx;
-            const int Li = (i - 1 + Nx) % Nx;
             const int Ti = (j + 1) % Ny;
-            const int Bi = (j - 1 + Ny) % Ny;
 
             //
             // --- X-face between cell i and Ri (right face of cell i)
@@ -460,7 +458,7 @@ void Fluid::RiemannSolver() {
                 // compute local max signal speed in x (Rusanov): s = max(|u| + c) over L,R
                 double cL = sqrt(max(0.0, gamma * pL / rhoL));
                 double cR = sqrt(max(0.0, gamma * pR / rhoR));
-                double smax = std::max(fabs(uL) + cL, fabs(uR) + cR);
+                double smax = max(fabs(uL) + cL, fabs(uR) + cR);
 
                 // Rusanov flux: 0.5*(F_L + F_R) - 0.5 * smax * (U_R - U_L)
                 flux_rho_X(i,j) = 0.5 * (FL_rho + FR_rho) - 0.5 * smax * (UR_rho - UL_rho);
@@ -515,7 +513,7 @@ void Fluid::RiemannSolver() {
                 // compute local max signal speed in y
                 double cL = sqrt(max(0.0, gamma * pL / rhoL));
                 double cR = sqrt(max(0.0, gamma * pR / rhoR));
-                double smax = std::max(fabs(vL) + cL, fabs(vR) + cR);
+                double smax = max(fabs(vL) + cL, fabs(vR) + cR);
 
                 // Rusanov flux in y-direction
                 flux_rho_Y(i,j)  = 0.5 * (GL_rho + GR_rho) - 0.5 * smax * (UR_rho - UL_rho);

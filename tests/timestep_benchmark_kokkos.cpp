@@ -17,8 +17,6 @@ void timeStepBenchmark(int Nx, int Ny, int useSlopeLimiter){
     // Placeholder for timestep benchmarking function
     double boxSizeX = 1.0;
     double boxSizeY = 1.0;
-    double tFinal = 1.0; //2.0;
-    double tOut = 0.01;
 
     struct timespec start, end;
 
