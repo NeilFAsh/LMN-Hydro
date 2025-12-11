@@ -2,9 +2,14 @@
 build/
 desul/
 .vscode/
+CMakeFiles/
+_deps/
+Makefile
 *.o
+*.a
 *.obj
 *.exe
 *.out
 *.log
+*.cmake
 !/docs/build/
