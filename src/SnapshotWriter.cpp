@@ -106,6 +106,7 @@ void SnapshotWriter::save_npz_snapshot(
     const std::vector<std::vector<double>>& P,
     size_t Nx,
     size_t Ny, 
+    double t,
     double totalMass,
     double totalEnergy,
     double totalMomentumX,
@@ -119,8 +120,8 @@ void SnapshotWriter::save_npz_snapshot(
     mz_zip_writer_init_file(&zip, path.c_str(), 0);
 
     // Add .npy with conserved quantities before other values
-    std::vector<double> summary = { totalMass, totalEnergy, totalMomentumX, totalMomentumY };
-    add_npy_to_zip(&zip, "conserved.npy", summary, 4, 1);
+    std::vector<double> summary = { t, totalMass, totalEnergy, totalMomentumX, totalMomentumY };
+    add_npy_to_zip(&zip, "conserved.npy", summary, 5, 1);
     
     auto rho_f = flatten(rho);
     auto vx_f  = flatten(vx);

@@ -1,8 +1,16 @@
-cmake_minimum_required(VERSION 3.10)
-project(KHI_Solver)
+cmake_minimum_required(VERSION 3.16)
+
+# Make sure C is listed, otherwise miniz.c won't compile correctly
+project(LMNHydro LANGUAGES C CXX)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_COMPILER /sw/pkgs/arc/gcc/13.2.0/bin/g++)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CXX_COMPILER /sw/pkgs/arc/gcc/13.2.0/bin/g++) # potentially problematic
+
+# Older GCC needs filesystem linking
+if (CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
+    add_link_options(-lstdc++fs)
+endif()
 
 set(Kokkos_ENABLE_CUDA ON)
 set(Kokkos_ENABLE_OPENMP ON)
@@ -20,141 +28,8 @@ FetchContent_Declare(
 )
 FetchContent_MakeAvailable(Kokkos)
 
+include_directories(${PROJECT_SOURCE_DIR}/include)
 
-include_directories(${CMAKE_SOURCE_DIR}/include)
-
-add_executable(fluid_khi)
-target_link_options(fluid_khi PRIVATE -lstdc++fs)
-target_compile_options(fluid_khi PRIVATE -O3 -march=native)
-target_sources(fluid_khi
-    PRIVATE 
-        ./src/fluid.cpp
-        ./examples/fluid_KHI.cpp
-        ./src/SnapshotWriter.cpp
-        ./src/miniz.c
-
-    PUBLIC
-        FILE_SET HEADERS
-        TYPE HEADERS
-        BASE_DIRS ./include
-        FILES
-            ./include/fluid.hpp
-            ./include/SnapshotWriter.hpp
-            ./include/fluid_KHI.hpp
-            ./include/miniz.h
-)
-
-add_executable(fluid_khi_kokkos)
-target_link_options(fluid_khi_kokkos PRIVATE -lstdc++fs -Wno-deprecated-gpu-targets)
-target_compile_options(fluid_khi_kokkos PRIVATE -O3 -march=native)
-target_sources(fluid_khi_kokkos
-    PRIVATE 
-        ./src/fluid_kokkos.cpp
-        ./examples/fluid_KHI_Kokkos.cpp
-        ./src/SnapshotWriter.cpp
-        ./src/miniz.c
-
-    PUBLIC
-        FILE_SET HEADERS
-        TYPE HEADERS
-        BASE_DIRS ./include
-        FILES
-            ./include/fluid_kokkos.hpp
-            ./include/SnapshotWriter.hpp
-            ./include/miniz.h
-)
-target_link_libraries(fluid_khi_kokkos Kokkos::kokkos)
-
-add_executable(timestep_benchmark)
-target_link_options(timestep_benchmark PRIVATE -lstdc++fs)
-target_compile_options(timestep_benchmark PRIVATE -O3 -march=native)
-target_sources(timestep_benchmark
-    PRIVATE 
-        ./src/fluid.cpp
-        ./tests/timestep_benchmark.cpp
-        ./src/SnapshotWriter.cpp
-        ./src/miniz.c
-
-    PUBLIC
-        FILE_SET HEADERS
-        TYPE HEADERS
-        BASE_DIRS ./include
-        FILES
-            ./include/fluid.hpp
-            ./include/SnapshotWriter.hpp
-            ./include/miniz.h
-)
-
-add_executable(timestep_benchmark_kokkos)
-target_link_options(timestep_benchmark_kokkos PRIVATE -lstdc++fs -Wno-deprecated-gpu-targets)
-target_compile_options(timestep_benchmark_kokkos PRIVATE -O3 -march=native)
-target_sources(timestep_benchmark_kokkos
-    PRIVATE 
-        ./src/fluid_kokkos.cpp
-        ./tests/timestep_benchmark_kokkos.cpp
-        ./src/SnapshotWriter.cpp
-        ./src/miniz.c
-
-    PUBLIC
-        FILE_SET HEADERS
-        TYPE HEADERS
-        BASE_DIRS ./include
-        FILES
-            ./include/fluid_kokkos.hpp
-            ./include/SnapshotWriter.hpp
-            ./include/miniz.h
-)
-target_link_libraries(timestep_benchmark_kokkos Kokkos::kokkos)
-
-add_executable(component_benchmark)
-target_link_options(component_benchmark PRIVATE -lstdc++fs)
-target_compile_options(component_benchmark PRIVATE -O3 -march=native)
-target_sources(component_benchmark
-    PRIVATE 
-        ./src/fluid.cpp
-        ./tests/component_benchmark.cpp
-        ./src/SnapshotWriter.cpp
-        ./src/miniz.c
-
-    PUBLIC
-        FILE_SET HEADERS
-        TYPE HEADERS
-        BASE_DIRS ./include
-        FILES
-            ./include/fluid.hpp
-            ./include/SnapshotWriter.hpp
-            ./include/miniz.h
-)
-
-add_executable(component_benchmark_kokkos)
-target_link_options(component_benchmark_kokkos PRIVATE -lstdc++fs -Wno-deprecated-gpu-targets)
-target_compile_options(component_benchmark_kokkos PRIVATE -O3 -march=native)
-target_sources(component_benchmark_kokkos
-    PRIVATE 
-        ./src/fluid_kokkos.cpp
-        ./tests/component_benchmark_kokkos.cpp
-        ./src/SnapshotWriter.cpp
-        ./src/miniz.c
-
-    PUBLIC
-        FILE_SET HEADERS
-        TYPE HEADERS
-        BASE_DIRS ./include
-        FILES
-            ./include/fluid_kokkos.hpp
-            ./include/SnapshotWriter.hpp
-            ./include/miniz.h
-)
-target_link_libraries(component_benchmark_kokkos Kokkos::kokkos)
-
-
-# Might need to fetch miniz in the future, but for now we include it directly in the source tree.
-#  include(FetchContent)
-
-# FetchContent_Declare(
-#     miniz
-#     GIT_REPOSITORY https://github.com/richgel999/miniz
-#     GIT_TAG master
-# )
-
-# FetchContent_MakeAvailable(miniz)
+add_subdirectory(src)
+add_subdirectory(examples)
+add_subdirectory(tests)

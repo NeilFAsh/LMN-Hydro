@@ -24,6 +24,7 @@ public:
         const std::vector<std::vector<double>>& P,
         size_t Nx,
         size_t Ny,
+        double t,
         double totalMass,
         double totalEnergy,
         double totalMomentumX,
