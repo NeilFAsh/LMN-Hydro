@@ -25,7 +25,8 @@ add_library(lmnhydro STATIC
 )
 
 if(USE_KOKKOS)
-    # find_package(Kokkos REQUIRED)
+    #set(Kokkos_DIR /home/nfash/NERS570/LMN-Hydro/build/_deps/kokkos-build)
+    #find_package(Kokkos REQUIRED)
     if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU")
         target_link_libraries(lmnhydro PRIVATE Kokkos::kokkos stdc++fs)
     else()

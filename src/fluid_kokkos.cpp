@@ -191,7 +191,7 @@ void Fluid::runSimulation(double tFinal, double tOut){
             std::string filenum = oss.str();
             // save
             writer.save_npz_snapshot("snapshot_" + filenum + ".npz", 
-                                        vec_rho, vec_vx, vec_vy, vec_P, Nx, Ny,
+                                        vec_rho, vec_vx, vec_vy, vec_P, Nx, Ny, t,
                                         totalMass, totalEnergy, totalMomentumX, totalMomentumY);
             
             numOutputs++;
