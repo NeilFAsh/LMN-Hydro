@@ -2,6 +2,9 @@
 
 LMN-Hydro is a simple but extensible 2D hydrodynamics simulation code written in C++. It is designed for simulating fluid dynamics problems in astrophysics and engineering applications.
 
+<img width="1682" height="1486" alt="image" src="https://github.com/user-attachments/assets/b1b46dcd-9c69-4656-977f-eda1e647fe8e" />
+
+
 ## How to install
 
 CMake is our primary build system. To install LMN-Hydro, follow these steps:
