@@ -62,11 +62,10 @@ class Fluid {
         Fluid(int Nx, int Ny, double boxSizeX, double boxSizeY);
         ~Fluid();
         void initialize();
+        void assemble();
         void runSimulation(double tFinal, double tOut);
         void runTimeStep();
         double calculateTimeStep();
-
-    private:
         void extrapolateToFaces(double dt);
         void updateStates(double dt);
         void RiemannSolver();

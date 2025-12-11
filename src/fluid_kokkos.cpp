@@ -83,6 +83,13 @@ void Fluid::initialize(){
     this->_state = initialized;
 
 };
+
+void Fluid::assemble(){
+
+    assert(this->_state == assembled || this->_state == initialized);
+    this->_state = assembled;
+
+}
         
 void Fluid::printState(int step){
 
@@ -98,6 +105,11 @@ void Fluid::printState(int step){
     auto vy = this->vy.view<Kokkos::DefaultExecutionSpace>();
     auto pressure = this->pressure.view<Kokkos::DefaultExecutionSpace>();
     auto density = this->density.view<Kokkos::DefaultExecutionSpace>();
+
+    // make local copies of the class attributes here
+    // do this because of issues with implicit capture in Kokkos
+    double gamma = this->gamma;
+    double cellVol = this->cellVol;
 
     Kokkos::parallel_reduce("compute_totals",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
@@ -240,15 +252,20 @@ void Fluid::updateStates(double dt){
     this->vy.modify<Kokkos::DefaultExecutionSpace>();
     this->pressure.modify<Kokkos::DefaultExecutionSpace>();
 
+    // Make local copies of class attributes used by Kokkos
+    double cellVol = this->cellVol;
+    double gamma = this->gamma;
+    double dx = this->dx;
+    double dy = this->dy;
+    int Nx = this->Nx;
+    int Ny = this->Ny;
+
     Kokkos::parallel_for("update_states",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
         KOKKOS_LAMBDA (const int i, const int j) {
 
             // Periodic boundary conditions
-            int Ri = (i + 1) % Nx; // right
             int Li = (i - 1 + Nx) % Nx; //left 
-
-            int Ti = (j + 1) % Ny; // top
             int Bi = (j - 1 + Ny) % Ny; // bottom
 
             // Get conserved quantities
@@ -293,6 +310,7 @@ void Fluid::updateStates(double dt){
 
     Kokkos::fence();
     // Compute minimum density and pressure on device to detect non-physical states.
+    //cout << "beginning parallel reduce" << endl;
     double minDensity = 1e300;
     double minPressure = 1e300;
     Kokkos::parallel_reduce("check_physical_states",
@@ -319,9 +337,10 @@ void Fluid::updateStates(double dt){
     // }
 
     Kokkos::fence();
-    
+    //cout << "ended parallel for" << endl;
     if (minDensity <= 0.0 || minPressure <= 0.0) {
         // Sync to host and print offending cell values for debugging
+        cout << "syncing to host b/c problem" << endl;
         this->density.sync<Kokkos::HostSpace>();
         this->pressure.sync<Kokkos::HostSpace>();
         auto density_h = this->density.view<Kokkos::HostSpace>();
@@ -343,6 +362,7 @@ void Fluid::updateStates(double dt){
         }
         throw runtime_error("Simulation encountered non-physical state (negative or zero density or pressure).");
     }
+    //cout << "Finished updateState" << endl;
 };  
 
 void Fluid::RiemannSolver() {
@@ -379,6 +399,11 @@ void Fluid::RiemannSolver() {
     auto flux_E_X = this->flux_E_X.view<Kokkos::DefaultExecutionSpace>();
     auto flux_E_Y = this->flux_E_Y.view<Kokkos::DefaultExecutionSpace>();
 
+    // Make local copies of class attributes used by Kokkos
+    double gamma = this->gamma;
+    int Nx = this->Nx;
+    int Ny = this->Ny;
+
     // Solve Riemann problems at each right/top face of cell (i,j).
     // We'll assemble conserved left and right states from the face-extrapolated primitives
     // and apply the Rusanov flux formula.
@@ -387,10 +412,10 @@ void Fluid::RiemannSolver() {
         KOKKOS_LAMBDA (const int i, const int j) {
     
             // neighbor indices (periodic)
-            int Ri = (i + 1) % Nx;
-            int Li = (i - 1 + Nx) % Nx;
-            int Ti = (j + 1) % Ny;
-            int Bi = (j - 1 + Ny) % Ny;
+            const int Ri = (i + 1) % Nx;
+            const int Li = (i - 1 + Nx) % Nx;
+            const int Ti = (j + 1) % Ny;
+            const int Bi = (j - 1 + Ny) % Ny;
 
             //
             // --- X-face between cell i and Ri (right face of cell i)
@@ -533,17 +558,24 @@ void Fluid::extrapolateToFaces(double dt){
     auto P_YB = this->P_YB.view<Kokkos::DefaultExecutionSpace>();
     auto P_YT = this->P_YT.view<Kokkos::DefaultExecutionSpace>();
 
+    // Make local copies of class attributes used by Kokkos
+    double gamma = this->gamma;
+    double dx = this->dx;
+    double dy = this->dy;
+    int Nx = this->Nx;
+    int Ny = this->Ny;
+
     // extrapolate cell-centered values to faces
     Kokkos::parallel_for("extrapolate_to_faces",
         Kokkos::MDRangePolicy<Kokkos::Rank<2>>({0,0}, {Nx,Ny}),
         KOKKOS_LAMBDA (const int i, const int j) {
  
             // Periodic boundary conditions
-            int Ri = (i + 1) % Nx; // right
-            int Li = (i - 1 + Nx) % Nx; //left 
+            const int Ri = (i + 1) % Nx; // right
+            const int Li = (i - 1 + Nx) % Nx; //left 
 
-            int Ti = (j + 1) % Ny; // top
-            int Bi = (j - 1 + Ny) % Ny; // bottom
+            const int Ti = (j + 1) % Ny; // top
+            const int Bi = (j - 1 + Ny) % Ny; // bottom
 
             // compute gradients using central differences
             double gradX_Density = (density(Ri,j) - density(Li,j)) / (2.0*dx);
@@ -558,16 +590,16 @@ void Fluid::extrapolateToFaces(double dt){
             double gradY_Vy = (vy(i,Ti) - vy(i,Bi)) / (2.0*dy);
 
             // apply slope limiter if enabled
-            if(useSlopeLimiter){
-                slopeLimiter(gradX_Density, gradY_Density, density,
-                                i, j, Ri, Li, Ti, Bi);
-                slopeLimiter(gradX_Pressure, gradY_Pressure, pressure,
-                                i, j, Ri, Li, Ti, Bi);
-                slopeLimiter(gradX_Vx, gradY_Vx, vx,
-                                i, j, Ri, Li, Ti, Bi);
-                slopeLimiter(gradX_Vy, gradY_Vy, vy,
-                                i, j, Ri, Li, Ti, Bi);
-            }
+            // if(useSlopeLimiter){
+            //     slopeLimiter(gradX_Density, gradY_Density, density,
+            //                     i, j, Ri, Li, Ti, Bi);
+            //     slopeLimiter(gradX_Pressure, gradY_Pressure, pressure,
+            //                     i, j, Ri, Li, Ti, Bi);
+            //     slopeLimiter(gradX_Vx, gradY_Vx, vx,
+            //                     i, j, Ri, Li, Ti, Bi);
+            //     slopeLimiter(gradX_Vy, gradY_Vy, vy,
+            //                     i, j, Ri, Li, Ti, Bi);
+            // };
 
             // extrapolate cell-centered values to faces
             double rho_prime = density(i,j) - 0.5 * dt * (gradX_Density * vx(i,j) + gradY_Density * vy(i,j) +
@@ -604,7 +636,7 @@ void Fluid::extrapolateToFaces(double dt){
             P_YT(i,j) = pressure_prime + gradY_Pressure * dy / 2.0;
         }
     );
-
+    //cout << "Finished parallel for" << endl;
     Kokkos::fence();
 };
 
@@ -641,16 +673,10 @@ double Fluid::calculateTimeStep(){
     //cout << "Sound speed: " << cs << ", Max Velocity: " << maxV << ", Max pressure: " << maxP << ", min density: " << minRho << endl;
     double dt = courant_fac * min(dx, dy) / (cs + maxV);
 
-    if (minRho == 1e10){
-        for (int i = 0; i < 10; i++){
-            cout << density(i,i) << endl;
-        }
-    }
-
     return dt;
 };
 
-void Fluid::slopeLimiter(double &gradx, double &grady, const Kokkos::View<double**, Kokkos::LayoutRight> field,
+void Fluid::slopeLimiter(double &gradx, double &grady, const Kokkos::View<double**> field,
                     int i, int j, int Ri, int Li, int Ti, int Bi){
 
     double floor_x, floor_y;

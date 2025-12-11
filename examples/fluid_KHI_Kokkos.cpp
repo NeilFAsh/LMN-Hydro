@@ -20,7 +20,6 @@ using namespace fluid_kokkos;
 #include <algorithm>
 #include <cassert>
 
-#include "fluid.hpp"
 #include "SnapshotWriter.hpp"
 
 using namespace fluid_kokkos;
@@ -52,6 +51,13 @@ void Fluid_KHI::initialize_KHI(){
     this->vy.modify<Kokkos::DefaultExecutionSpace>();
     this->density.modify<Kokkos::DefaultExecutionSpace>();
     this->pressure.modify<Kokkos::DefaultExecutionSpace>();
+
+    double dy = this->dy;
+    double dx = this->dx;
+    double BoxSizeY = this->BoxSizeY;
+    double BoxSizeX = this->BoxSizeX;
+    double w0 = this->w0;
+    double sigma = this->sigma;
 
     // set up initial conditions on the device
     Kokkos::parallel_for("initialize_KHI",
@@ -97,8 +103,9 @@ int main(){
 
     cout << "Starting Kelvin-Helmholtz Instability Simulation" << endl;
     Fluid_KHI fluid(Nx, Ny, boxSizeX, boxSizeY);
+    //cout << "setting initial conditions" << endl;
     fluid.initialize_KHI();
-
+    //cout << "beginning simulation run" << endl;
     try {
         fluid.runSimulation(tFinal,tOut);
     } catch (const runtime_error& e) {

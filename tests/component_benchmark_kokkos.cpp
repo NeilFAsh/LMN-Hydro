@@ -13,7 +13,7 @@
 
 using namespace fluid_kokkos;
 
-void timeStepBenchmark(int Nx, int Ny, int useSlopeLimiter){
+void componentBenchmark(int Nx, int Ny, int useSlopeLimiter){
     // Placeholder for timestep benchmarking function
     double boxSizeX = 1.0;
     double boxSizeY = 1.0;
@@ -59,18 +59,56 @@ void timeStepBenchmark(int Nx, int Ny, int useSlopeLimiter){
         fluid.pressure.sync<Kokkos::DefaultExecutionSpace>();
     }
     
-    // time execution for 10 timesteps
+    // time dt calc for 10 timesteps
+    double dt;
     clock_gettime(CLOCK_MONOTONIC, &start);
     for (int j = 0; j < 10; j++){
-        fluid.runTimeStep();
+        dt = fluid.calculateTimeStep();
     }
     clock_gettime(CLOCK_MONOTONIC, &end);   
 
-    double time_taken = (end.tv_sec - start.tv_sec) + 
+    double calc_dt_time = (end.tv_sec - start.tv_sec) + 
                         (end.tv_nsec - start.tv_nsec) / 1e9;
-    
-    cout << "Avg time per step for Nx = " << Nx << ", Ny = " << Ny << " : " 
-            << time_taken / 10.0 << " seconds." << endl;
+
+    // time extrapolateToFaces
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (int j = 0; j < 10; j++){
+        fluid.extrapolateToFaces(dt);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end);   
+
+    double extrapolate_time = (end.tv_sec - start.tv_sec) + 
+                                (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    // time Riemann solver
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (int j = 0; j < 10; j++){
+        fluid.RiemannSolver();
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end);   
+
+    double riemann_time = (end.tv_sec - start.tv_sec) + 
+                                (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    // time updateStates
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    for (int j = 0; j < 10; j++){
+        fluid.updateStates(dt);
+    }
+    clock_gettime(CLOCK_MONOTONIC, &end);   
+
+    double update_time = (end.tv_sec - start.tv_sec) + 
+                                (end.tv_nsec - start.tv_nsec) / 1e9;
+
+    calc_dt_time /= 10;
+    extrapolate_time /= 10;
+    riemann_time /= 10; 
+    update_time /= 10;
+
+    cout << "Avg time for Nx = " << Nx << ", Ny = " << Ny << " : "  << endl;
+    cout << "dt: " << calc_dt_time << ", extrapolation: " << extrapolate_time << ", riemann solver: " << riemann_time
+            << ", update states: " << update_time << endl;
+    cout << endl;
 
 
 };
@@ -86,7 +124,7 @@ int main(){
         int Ny = pow(2, power); //1024;
         
         cout << "Starting Fluid Solver Benchmarking with Nx = " << Nx << ", Ny = " << Ny << endl;
-        timeStepBenchmark(Nx, Ny, 0); // without slope limiter
+        componentBenchmark(Nx, Ny, 0); // without slope limiter
         //timeStepBenchmark(Nx, Ny, 1); // with slope limiter
     }
 

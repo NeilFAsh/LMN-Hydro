@@ -14,7 +14,7 @@ namespace fluid_kokkos {
     enum fluidState {undefined, allocated, initialized, assembled};
     //enum device {Kokkos::Cuda, Kokkos::OpenMP, Kokkos::Serial};
 
-    using Kmat = Kokkos::DualView<double**,Kokkos::LayoutRight>;
+    using Kmat = Kokkos::DualView<double**>;
     using Kdouble = Kokkos::DualView<double>;
 
 
@@ -68,15 +68,15 @@ class Fluid {
         Fluid(int Nx, int Ny, double boxSizeX, double boxSizeY);
         ~Fluid();
         void initialize();
+        void assemble();
         void runSimulation(double tFinal, double tOut);
         void runTimeStep();
         double calculateTimeStep();
 
-    private:
         void extrapolateToFaces(double dt);
         void updateStates(double dt);
         void RiemannSolver();
-        void slopeLimiter(double &gradx, double &grady, const Kokkos::View<double**, Kokkos::LayoutRight> field,
+        void slopeLimiter(double &gradx, double &grady, const Kokkos::View<double**> field,
                             int i, int j, int Ri, int Li, int Ti, int Bi);
         void printState(int step);
 };
