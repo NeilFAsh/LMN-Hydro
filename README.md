@@ -7,12 +7,17 @@ LMN-Hydro is a simple but extensible 2D hydrodynamics simulation code written in
 
 ## How to install
 
-CMake is our primary build system. To install LMN-Hydro, follow these steps:
+CMake is our primary build system. To install LMN-Hydro with a serial (CPU) backend, follow these steps:
 
-    mkdir build
+    cmake -B build -DUSE_KOKKOS=OFF
     cd build
-    cmake ..
-    make -j
+    make 
+    
+To build with Kokkos (GPU) support enabled, run the above with:
+
+    cmake -B build -DUSE_KOKKOS=ON
+
+Note that CUDA is required for Kokkos support. LMN-Hydro assumes SKX and VOLTA70 architectures (passed to Kokkos) by default, this can be changed by modifying CMakeLists.txt.
 
 ## Documentation
 
